@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
+  Animated,
   StyleSheet,
   Text,
   TextInput,
@@ -26,8 +27,46 @@ export const MemoForm = ({
   onSave,
   editingId
 }: MemoFormProps) => {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const handleCancel = () => {
+    Animated.timing(anim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => onCancel());
+  };
+
+  const handleSave = () => {
+    Animated.timing(anim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => onSave());
+  };
+
+  const animatedStyle = {
+    opacity: anim,
+    transform: [
+      {
+        translateY: anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [-20, 0],
+        }),
+      },
+    ],
+  };
+
   return (
-    <View style={styles.inlineForm}>
+    <Animated.View style={[styles.inlineForm, animatedStyle]}>
       <TextInput
         style={styles.inlineTitleInput}
         placeholder="제목을 입력하세요"
@@ -45,18 +84,18 @@ export const MemoForm = ({
         onChangeText={setNewContent}
       />
       <View style={styles.inlineFormActions}>
-        <TouchableOpacity style={styles.inlineCancelBtn} onPress={onCancel}>
+        <TouchableOpacity style={styles.inlineCancelBtn} onPress={handleCancel}>
           <Text style={styles.inlineCancelBtnText}>취소</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.inlineSaveBtn, !newTitle.trim() && styles.inlineSaveBtnDisabled]} 
-          onPress={onSave}
+          onPress={handleSave}
           disabled={!newTitle.trim()}
         >
           <Text style={styles.inlineSaveBtnText}>{editingId ? '수정' : '저장'}</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </Animated.View>
   );
 };
 

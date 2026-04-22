@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
-  LayoutAnimation,
   Platform,
   ScrollView,
   StatusBar,
@@ -53,8 +52,10 @@ export default function CalendarMemoApp() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // 애니메이션 상태
   const translateX = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(1)).current;
+  const focusAnim = useRef(new Animated.Value(0)).current; // 포커스 전환용
   const itemHeights = useRef<number[]>([]);
   const syncedYears = useRef<Set<number>>(new Set());
 
@@ -65,6 +66,16 @@ export default function CalendarMemoApp() {
     syncHolidays(currentYear);
     syncHolidays(currentYear + 1);
   }, [viewDate.getFullYear()]);
+
+  // 날짜 선택 시 포커스 애니메이션 트리거
+  useEffect(() => {
+    Animated.spring(focusAnim, {
+      toValue: selectedDate ? 1 : 0,
+      useNativeDriver: true,
+      friction: 8,
+      tension: 40,
+    }).start();
+  }, [selectedDate]);
 
   const loadMemos = async () => {
     try {
@@ -77,10 +88,8 @@ export default function CalendarMemoApp() {
     const now = new Date();
     const currentRealYear = now.getFullYear();
     const isOutOfRange = year < currentRealYear - 1 || year > currentRealYear + 1;
-
     if (syncedYears.current.has(year)) return;
     syncedYears.current.add(year);
-
     const cacheKey = `${HOLIDAY_CACHE_KEY}${year}`;
     try {
       const saved = await AsyncStorage.getItem(cacheKey);
@@ -93,13 +102,11 @@ export default function CalendarMemoApp() {
         }
       }
       if (isOutOfRange || !PROXY_URL) return;
-
       const response = await fetch(`${PROXY_URL}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ year, appId: PROXY_TOKEN }),
       });
-
       if (response.ok) {
         const resData = await response.json();
         const holidayMap: { [key: string]: string } = {};
@@ -119,28 +126,22 @@ export default function CalendarMemoApp() {
           await AsyncStorage.setItem(cacheKey, JSON.stringify({ data: holidayMap, timestamp: Date.now() }));
         }
       }
-    } catch (e) {
-      syncedYears.current.delete(year);
-    }
+    } catch (e) { syncedYears.current.delete(year); }
   };
 
   const openAddModal = () => {
-    if (Platform.OS !== 'web') LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setEditingId(null); setNewTitle(''); setNewContent(''); setModalVisible(true);
   };
 
   const openEditModal = (item: MemoEntry) => {
-    if (Platform.OS !== 'web') LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setEditingId(item.id); setNewTitle(item.title); setNewContent(item.content); setModalVisible(true);
   };
 
   const saveMemo = async () => {
     if (!newTitle.trim() || !selectedDate) return;
-    if (Platform.OS !== 'web') LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const updated = { ...memos };
     const dateMemos = updated[selectedDate] || [];
     const colorIdx = dateMemos.length % MEMO_COLORS.length;
-
     if (editingId) {
       updated[selectedDate] = dateMemos.map(m => m.id === editingId ? { ...m, title: newTitle, content: newContent } : m);
     } else {
@@ -153,7 +154,6 @@ export default function CalendarMemoApp() {
 
   const deleteMemo = async (id: string) => {
     if (!selectedDate) return;
-    if (Platform.OS !== 'web') LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const updated = { ...memos };
     updated[selectedDate] = updated[selectedDate].filter(m => m.id !== id);
     if (updated[selectedDate].length === 0) delete updated[selectedDate];
@@ -163,7 +163,6 @@ export default function CalendarMemoApp() {
 
   const reorderMemos = async (fromIndex: number, toIndex: number) => {
     if (!selectedDate || fromIndex === toIndex) return;
-    if (Platform.OS !== 'web') LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const dateMemos = [...(memos[selectedDate] || [])];
     const [movedItem] = dateMemos.splice(fromIndex, 1);
     dateMemos.splice(toIndex, 0, movedItem);
@@ -190,8 +189,8 @@ export default function CalendarMemoApp() {
 
   const onDatePress = (date: Date) => {
     const dateStr = getDateKey(date);
-    if (Platform.OS !== 'web') LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setSelectedDate(prev => prev === dateStr ? null : dateStr);
+    setModalVisible(false);
     setEditingId(null); setNewTitle(''); setNewContent('');
   };
 
@@ -227,6 +226,11 @@ export default function CalendarMemoApp() {
   const todayStr = getDateKey(new Date());
   const selectedMemos = selectedDate ? (memos[selectedDate] || []) : [];
 
+  const focusViewStyle = {
+    opacity: focusAnim,
+    transform: [{ scale: focusAnim.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] }) }]
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
@@ -244,7 +248,7 @@ export default function CalendarMemoApp() {
         <PanGestureHandler onHandlerStateChange={onGestureEvent} activeOffsetX={[-30, 30]}>
           <Animated.View style={[{ flex: 1 }, { transform: [{ translateX }], opacity }]}>
             {selectedDate && selectedWeekIndex !== -1 ? (
-              <View style={styles.focusContainer}>
+              <Animated.View style={[styles.focusContainer, focusViewStyle]}>
                 <WeekRow 
                   week={weeks[selectedWeekIndex]} wi={selectedWeekIndex} viewDate={viewDate} 
                   selectedDate={selectedDate} todayStr={todayStr} memos={memos} holidays={holidays} 
@@ -279,10 +283,8 @@ export default function CalendarMemoApp() {
                   {modalVisible && (
                     <MemoForm 
                       newTitle={newTitle} setNewTitle={setNewTitle} newContent={newContent} 
-                      setNewContent={setNewContent} onCancel={() => {
-                        if (Platform.OS !== 'web') LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                        setModalVisible(false);
-                      }} onSave={saveMemo} editingId={editingId} 
+                      setNewContent={setNewContent} onCancel={() => setModalVisible(false)} 
+                      onSave={saveMemo} editingId={editingId} 
                     />
                   )}
 
@@ -309,7 +311,7 @@ export default function CalendarMemoApp() {
                 ) : (
                   <View style={[styles.weekRow, styles.focusWeekHeight, { backgroundColor: '#FAFAFA' }]} />
                 )}
-              </View>
+              </Animated.View>
             ) : (
               <View style={styles.calendarGrid}>
                 {weeks.map((week, wi) => (

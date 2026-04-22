@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   StyleSheet,
@@ -23,7 +23,31 @@ interface DraggableMemoItemProps {
 
 export const DraggableMemoItem = ({ item, index, totalCount, itemHeights, onDelete, onEdit, onReorder }: DraggableMemoItemProps) => {
   const dragY = useRef(new Animated.Value(0)).current;
+  const entranceAnim = useRef(new Animated.Value(0)).current; // 등장 및 퇴장 애니메이션
   const [isDragging, setIsDragging] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
+
+  // 등장 애니메이션
+  useEffect(() => {
+    Animated.spring(entranceAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 7,
+    }).start();
+  }, []);
+
+  // 삭제 애니메이션 후 처리
+  const handleDelete = () => {
+    setIsExiting(true);
+    Animated.timing(entranceAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      onDelete(item.id);
+    });
+  };
 
   const onGestureEvent = Animated.event(
     [{ nativeEvent: { translationY: dragY } }],
@@ -81,16 +105,35 @@ export const DraggableMemoItem = ({ item, index, totalCount, itemHeights, onDele
     }
   };
 
+  const animatedStyle = {
+    opacity: entranceAnim,
+    transform: [
+      { translateY: dragY },
+      { scale: entranceAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.9, 1],
+        }) 
+      },
+      { translateY: entranceAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [10, 0],
+        })
+      }
+    ],
+  };
+
   return (
     <Animated.View
       onLayout={(e) => {
-        itemHeights.current[index] = e.nativeEvent.layout.height;
+        if (!isExiting) {
+          itemHeights.current[index] = e.nativeEvent.layout.height;
+        }
       }}
       style={[
         styles.memoRow,
         { borderLeftColor: item.color || '#C8F0C4' },
+        animatedStyle,
         {
-          transform: [{ translateY: dragY }],
           zIndex: isDragging ? 100 : 1,
           backgroundColor: isDragging ? '#FDFDFD' : '#FFFFFF',
           elevation: isDragging ? 12 : 0,
@@ -116,7 +159,7 @@ export const DraggableMemoItem = ({ item, index, totalCount, itemHeights, onDele
       </TouchableOpacity>
 
       <View style={styles.memoRowActions}>
-        <TouchableOpacity onPress={() => onDelete(item.id)} style={styles.rowActionBtn}>
+        <TouchableOpacity onPress={handleDelete} style={styles.rowActionBtn}>
           <Ionicons name="trash-outline" size={16} color="#E8735A" />
         </TouchableOpacity>
         

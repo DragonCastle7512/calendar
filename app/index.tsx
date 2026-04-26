@@ -3,12 +3,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  BackHandler,
   Dimensions,
   Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  ToastAndroid,
   TouchableOpacity,
   UIManager,
   View
@@ -36,6 +38,11 @@ import { MemoEntry, MemosState } from '../src/types/calendar';
 import { getDateKey } from '../src/utils/date';
 import { getLunarHoliday } from '../src/utils/holiday';
 
+import * as Linking from 'expo-linking';
+import { requestWidgetUpdate } from 'react-native-android-widget';
+import { MemoWidget } from '../src/widgets/MemoWidget';
+import { useLocalSearchParams } from 'expo-router';
+
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -58,6 +65,21 @@ export default function CalendarMemoApp() {
   const focusAnim = useRef(new Animated.Value(0)).current; // 포커스 전환용
   const itemHeights = useRef<number[]>([]);
   const syncedYears = useRef<Set<number>>(new Set());
+  const lastBackPressed = useRef<number>(0);
+
+  const params = useLocalSearchParams();
+  const urlDate = params.date as string;
+
+  useEffect(() => {
+    if (urlDate) {
+      const targetDate = new Date(urlDate);
+      if (!isNaN(targetDate.getTime())) {
+        setViewDate(targetDate);
+        setSelectedDate(urlDate);
+        setModalVisible(true);
+      }
+    }
+  }, [urlDate]);
 
   useEffect(() => { 
     loadMemos();
@@ -76,6 +98,102 @@ export default function CalendarMemoApp() {
       tension: 40,
     }).start();
   }, [selectedDate]);
+
+  useEffect(() => {
+    const backAction = () => {
+      if (modalVisible) {
+        setModalVisible(false);
+        return true;
+      }
+      if (selectedDate) {
+        setSelectedDate(null);
+        return true;
+      }
+      
+      const currentTime = Date.now();
+      if (currentTime - lastBackPressed.current < 2000) {
+        BackHandler.exitApp();
+        return true;
+      }
+      
+      lastBackPressed.current = currentTime;
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('뒤로 가기 버튼을 한 번 더 누르면 종료됩니다.', ToastAndroid.SHORT);
+      }
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction,
+    );
+
+    return () => backHandler.remove();
+  }, [selectedDate, modalVisible]);
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      const updateWidget = async () => {
+        try {
+          // 위젯이 현재 보고 있는 날짜 확인
+          const savedWidgetDate = await AsyncStorage.getItem('@widget_view_date');
+          const viewDate = savedWidgetDate ? new Date(savedWidgetDate) : new Date();
+          
+          const year = viewDate.getFullYear();
+          const month = viewDate.getMonth();
+          const todayStr = getDateKey(new Date());
+
+          // 달력 데이터 생성
+          const firstDay = new Date(year, month, 1).getDay();
+          const lastDate = new Date(year, month + 1, 0).getDate();
+          const prevMonthLastDate = new Date(year, month, 0).getDate();
+          const days: Date[] = [];
+          for (let i = firstDay - 1; i >= 0; i--) days.push(new Date(year, month - 1, prevMonthLastDate - i));
+          for (let i = 1; i <= lastDate; i++) days.push(new Date(year, month, i));
+          let nextDate = 1;
+          while (days.length < 42) days.push(new Date(year, month + 1, nextDate++));
+          const rows: Date[][] = [];
+          for (let i = 0; i < 42; i += 7) rows.push(days.slice(i, i + 7));
+
+          // 공휴일 및 기념일 정보 구분 (앱 로직과 동기화, 42일 전체에 대해 수행)
+          const widgetHolidays: { [key: string]: string } = {};
+          const widgetAnniversaries: { [key: string]: string } = {};
+
+          days.forEach(d => {
+            const dKey = getDateKey(d);
+            const mDay = dKey.slice(5);
+            
+            // 휴일 (빨간날): API 데이터 | 음력 | 오프라인 휴일
+            const hName = holidays[dKey] || getLunarHoliday(d) || OFFLINE_HOLIDAYS[mDay];
+            if (hName) widgetHolidays[dKey] = hName;
+
+            // 기념일 (검은날): FIXED_ANNIVERSARIES
+            const aName = FIXED_ANNIVERSARIES[mDay];
+            if (aName) widgetAnniversaries[dKey] = aName;
+          });
+
+          requestWidgetUpdate({
+            widgetName: 'Memo',
+            renderWidget: () => (
+              <MemoWidget 
+                year={year} 
+                month={month} 
+                days={rows} 
+                memos={memos}
+                todayStr={todayStr}
+                holidays={widgetHolidays}
+                anniversaries={widgetAnniversaries}
+              />
+            ),
+            widgetNotFound: () => {}
+          });
+        } catch (e) {
+          // "keep awake" 에러 등 무시
+        }
+      };
+      updateWidget();
+    }
+  }, [memos, holidays]);
 
   const loadMemos = async () => {
     try {
@@ -224,6 +342,13 @@ export default function CalendarMemoApp() {
   }, [weeks, selectedDate]);
 
   const todayStr = getDateKey(new Date());
+  
+  const todayHoliday = useMemo(() => {
+    const [y, m, d] = todayStr.split('-');
+    const monthDay = `${m}-${d}`;
+    return holidays[todayStr] || getLunarHoliday(new Date()) || OFFLINE_HOLIDAYS[monthDay] || FIXED_ANNIVERSARIES[monthDay];
+  }, [todayStr, holidays]);
+
   const selectedMemos = selectedDate ? (memos[selectedDate] || []) : [];
 
   const focusViewStyle = {

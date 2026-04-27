@@ -24,6 +24,7 @@ export function MemoWidget({
   anniversaries = {}
 }: MemoWidgetProps) {
   const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+  const alpha = '4D'; // 30% transparency for other months
 
   return (
     <FlexWidget
@@ -75,12 +76,7 @@ export function MemoWidget({
       </FlexWidget>
 
       {/* 달력 그리드 */}
-      <FlexWidget style={{ 
-        flex: 1, 
-        width: 'match_parent', 
-        height: 'match_parent',
-        flexDirection: 'column' 
-      }}>
+      <FlexWidget style={{ flex: 1, width: 'match_parent', flexDirection: 'column' }}>
         {days.map((week, wi) => (
           <FlexWidget key={wi} style={{ 
             flexDirection: 'row', 
@@ -95,6 +91,7 @@ export function MemoWidget({
               const m = String(date.getMonth() + 1).padStart(2, '0');
               const d = String(date.getDate()).padStart(2, '0');
               const dateKey = `${y}-${m}-${d}`;
+              const monthDay = dateKey.slice(5);
               
               const isToday = dateKey === todayStr;
               const isCurrentMonth = date.getMonth() === month;
@@ -107,7 +104,7 @@ export function MemoWidget({
               const isHoliday = !!holidayName;
               const isRedDay = isSunday || isHoliday;
 
-              // 기본 색상
+              // 색상 결정
               let dateColor = '#333333';
               if (isRedDay) dateColor = '#E8735A';
               else if (isSaturday) dateColor = '#5A8FE8';
@@ -116,8 +113,7 @@ export function MemoWidget({
               const displayName = holidayName || anniversaryName;
               let textNameColor = isHoliday ? '#E8735A' : '#8A8A8A';
 
-              // 투명도 처리 (CSS 방식: #RRGGBBAA)
-              const alpha = '4D';
+              // 투명도 처리
               if (!isCurrentMonth) {
                 dateColor = `${dateColor}${alpha}`;
                 textNameColor = `${textNameColor}${alpha}`;
@@ -141,11 +137,7 @@ export function MemoWidget({
                     justifyContent: 'flex-start'
                   }}
                 >
-                  <FlexWidget style={{
-                    width: 'match_parent',
-                    justifyContent: 'space-between', 
-                    flexDirection: 'row',
-                  }}>
+                  <FlexWidget style={{ width: 'match_parent', justifyContent: 'space-between', flexDirection: 'row' }}>
                     <TextWidget
                       text={String(date.getDate())}
                       style={{
@@ -160,11 +152,11 @@ export function MemoWidget({
                       }}
                     />
                     {dayMemos.length > 2 && (
-                    <TextWidget 
-                      text={`+${dayMemos.length - 2}`} 
-                      style={{ fontSize: 9, color: !isCurrentMonth ? `#8A8A8A${alpha}` : '#8A8A8A', textAlign: 'center' }} 
-                    />
-                  )}
+                      <TextWidget 
+                        text={`+${dayMemos.length - 2}`} 
+                        style={{ fontSize: 9, color: isCurrentMonth ? '#8A8A8A' : `#8A8A8A${alpha}`, textAlign: 'center' }} 
+                      />
+                    )}
                   </FlexWidget>
 
                   <FlexWidget style={{ width: 'match_parent', flexDirection: 'column' }}>
@@ -178,9 +170,8 @@ export function MemoWidget({
                     
                     {dayMemos.slice(0, 2).map((memo) => {
                       const memoBg = memo.color || '#C8F0C4';
-                      const finalMemoBg = !isCurrentMonth ? `${memoBg}${alpha}` : memoBg;
-                      const memoTextColor = !isCurrentMonth ? `#000000${alpha}` : '#000000';
-
+                      const finalMemoBg = isCurrentMonth ? memoBg : `${memoBg}${alpha}`;
+                      const memoTextColor = isCurrentMonth ? '#000000' : `#000000${alpha}`;
                       return (
                         <FlexWidget 
                           key={memo.id} 

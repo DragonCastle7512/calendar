@@ -28,13 +28,13 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
       case 'WIDGET_UPDATE':
       case 'WIDGET_RESIZED':
         await render(props, viewDate, memos);
-        break;
-
-      case 'WIDGET_CLICK':
-        if (props.clickAction === 'OPEN_DATE') {
-          const clickedDate = props.clickActionData?.date;
-          if (clickedDate) Linking.openURL(`calendarapp://?date=${clickedDate}`);
-        } else if (props.clickAction === 'PREV_MONTH') {
+        case 'WIDGET_CLICK':
+          if (props.clickAction === 'OPEN_DATE') {
+            const clickedDate = props.clickActionData?.date;
+            if (clickedDate) {
+              Linking.openURL(`calendarapp://?date=${clickedDate}&source=widget`);
+            }
+          } else if (props.clickAction === 'PREV_MONTH') {
           viewDate.setMonth(viewDate.getMonth() - 1);
           await AsyncStorage.setItem(WIDGET_DATE_KEY, viewDate.toISOString());
           await render(props, viewDate, memos);

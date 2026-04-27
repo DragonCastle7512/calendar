@@ -7,20 +7,26 @@
     "icon": "./assets/images/icon.png",
     "scheme": "calendarapp",
     "userInterfaceStyle": "automatic",
+    "backgroundColor": "#00000000",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "backgroundColor": "#00000000",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#00000000",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.dstle.calendar"
+      "statusBar": {
+        "translucent": true,
+        "backgroundColor": "#00000000"
+      },
+      "package": "com.dstle.calendar",
+      "launchMode": "singleTask"
     },
     "web": {
       "output": "static",

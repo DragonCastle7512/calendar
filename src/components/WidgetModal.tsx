@@ -12,8 +12,10 @@ import {
   View
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { OFFLINE_HOLIDAYS } from '../constants/calendar';
 import { MemoEntry, MemosState } from '../types/calendar';
 import { getDateKey } from '../utils/date';
+import { getLunarHoliday } from '../utils/holiday';
 import { DraggableMemoItem } from './DraggableMemoItem';
 import { MemoForm } from './MemoForm';
 
@@ -26,6 +28,7 @@ interface WidgetModalProps {
   memos: MemoEntry[];
   allMemos: MemosState;
   holiday?: string;
+  holidays: { [date: string]: string };
   onClose: () => void;
   onAdd: () => void;
   onDelete: (id: string) => void;
@@ -49,6 +52,7 @@ export const WidgetModal = ({
   memos,
   allMemos,
   holiday,
+  holidays,
   onClose,
   onAdd,
   onDelete,
@@ -76,17 +80,25 @@ export const WidgetModal = ({
   }, [year, month]);
 
   useEffect(() => {
+    let timer: number;
     if (visible && scrollRef.current) {
       const dayIndex = targetDate.getDate() - 1;
       const scrollX = dayIndex * DAY_CELL_WIDTH - (DAY_CELL_WIDTH * 3);
-      setTimeout(() => {
+      timer = setTimeout(() => {
         scrollRef.current?.scrollTo({ x: Math.max(0, scrollX), animated: true });
       }, 150);
     }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [visible, dateStr]);
 
-  const handleExit = () => {
-    BackHandler.exitApp();
+  const handleBack = () => {
+    if (modalVisible) {
+      onCancel();
+    } else {
+      BackHandler.exitApp();
+    }
   };
 
   return (
@@ -94,17 +106,17 @@ export const WidgetModal = ({
       visible={visible}
       transparent={true}
       animationType="fade"
-      onRequestClose={handleExit}
+      onRequestClose={handleBack}
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.overlay}>
-          <TouchableWithoutFeedback onPress={handleExit}>
+          <TouchableWithoutFeedback onPress={handleBack}>
             <View style={styles.backdrop} />
           </TouchableWithoutFeedback>
           
           <View style={styles.cardContainer}>
             <View style={styles.header}>
-              <TouchableOpacity onPress={handleExit} style={styles.iconBtn}>
+              <TouchableOpacity onPress={handleBack} style={styles.iconBtn}>
                 <Ionicons name="arrow-back" size={26} color="#FFF" />
               </TouchableOpacity>
               <Text style={styles.headerTitle}>{year}년 {month + 1}월</Text>
@@ -123,10 +135,14 @@ export const WidgetModal = ({
               >
                 {daysInMonth.map((date, i) => {
                   const dKey = getDateKey(date);
+                  const mDay = dKey.slice(5);
                   const isSelected = dKey === dateStr;
                   const dayMemos = allMemos[dKey] || [];
+                  
                   const isSunday = date.getDay() === 0;
                   const isSaturday = date.getDay() === 6;
+                  
+                  const isRedDay = !!holidays[dKey] || !!getLunarHoliday(date) || !!OFFLINE_HOLIDAYS[mDay];
 
                   return (
                     <TouchableOpacity 
@@ -136,8 +152,8 @@ export const WidgetModal = ({
                     >
                       <Text style={[
                         styles.dayNum,
-                        isSunday && { color: '#E8735A' },
-                        isSaturday && { color: '#5A8FE8' },
+                        (isSunday || isRedDay) && { color: '#E8735A' },
+                        isSaturday && !isRedDay && { color: '#5A8FE8' },
                         isSelected && styles.selectedDayNum
                       ]}>
                         {date.getDate()}
@@ -179,9 +195,14 @@ export const WidgetModal = ({
             )}
 
             <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-              <View style={styles.listHeader}>
-                <Text style={styles.listDateText}>{month + 1}월 {targetDate.getDate()}일 {holiday && <Text style={styles.holidayLabel}>{holiday}</Text>}</Text>
-                <Text style={styles.memoPanelCount}>{memos.length > 0 ? `일정 ${memos.length}개` : '일정 없음'}</Text>
+              <View style={styles.listHeader} >
+                <View>
+                  <Text style={styles.listDateText}>{month + 1}월 {targetDate.getDate()}일 {holiday && <Text style={styles.holidayLabel}>{holiday}</Text>}</Text>
+                  <Text style={styles.memoPanelCount}>{memos.length > 0 ? `일정 ${memos.length}개` : '일정 없음'}</Text>
+                </View>
+                <View>
+                  {!modalVisible && <TouchableOpacity style={styles.addBtn} onPress={onAdd}><Ionicons name="add" size={22} color="#8A8A8A" /></TouchableOpacity>}
+                </View>
               </View>
 
               {memos.length === 0 ? (
@@ -255,8 +276,9 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     width: DAY_CELL_WIDTH,
-    paddingTop: 12,
-    alignItems: 'center',
+    paddingTop: 5,
+    paddingLeft: 5,
+    alignItems: 'flex-start',
     borderRightWidth: 1,
     borderRightColor: '#F8F8F8',
   },
@@ -276,8 +298,6 @@ const styles = StyleSheet.create({
   },
   selectedDayNum: {
     fontWeight: '900',
-    color: '#000',
-    textDecorationLine: 'underline',
   },
   memoSummaryArea: {
     width: '90%',
@@ -287,7 +307,7 @@ const styles = StyleSheet.create({
   },
   summaryBar: {
     width: '100%',
-    height: 14, // 글자가 들어갈 높이
+    height: 14,
     borderRadius: 2,
     justifyContent: 'center',
     paddingHorizontal: 2,
@@ -307,7 +327,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   listHeader: {
-    paddingVertical: 18,
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F5',
     marginBottom: 10,
@@ -322,6 +345,12 @@ const styles = StyleSheet.create({
     color: '#E8735A',
     fontWeight: '600',
     marginTop: 4,
+  },
+  addBtn: { 
+    width: 36, 
+    height: 36, 
+    alignItems: 'center', 
+    justifyContent: 'center'
   },
   iconBtn: {
     width: 44,

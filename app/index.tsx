@@ -119,6 +119,10 @@ export default function CalendarMemoApp() {
   useEffect(() => {
     const backAction = () => {
       if (widgetSelectedDate) {
+        if (modalVisible) {
+          setModalVisible(false);
+          return true;
+        }
         setWidgetSelectedDate(null);
         BackHandler.exitApp(); 
         return true;
@@ -405,6 +409,7 @@ export default function CalendarMemoApp() {
             memos={selectedMemos}
             allMemos={memos}
             holiday={(() => { const [y, m, d] = widgetSelectedDate.split('-'); const monthDay = `${m}-${d}`; return holidays[widgetSelectedDate] || getLunarHoliday(new Date(widgetSelectedDate)) || OFFLINE_HOLIDAYS[monthDay] || FIXED_ANNIVERSARIES[monthDay]; })() || undefined}
+            holidays={holidays}
             onClose={() => setWidgetSelectedDate(null)}
             onAdd={openAddModal}
             onDelete={deleteMemo}

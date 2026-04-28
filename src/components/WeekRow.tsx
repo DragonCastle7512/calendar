@@ -26,6 +26,8 @@ interface WeekRowProps {
   holidays: { [date: string]: string };
   isFocusView?: boolean;
   onDatePress: (date: Date) => void;
+  fontSizeIndex?: number;
+  alignment?: 'top' | 'center';
 }
 
 export const WeekRow = ({
@@ -37,9 +39,15 @@ export const WeekRow = ({
   memos,
   holidays,
   isFocusView = false,
-  onDatePress
+  onDatePress,
+  fontSizeIndex = 1,
+  alignment = 'top'
 }: WeekRowProps) => {
   if (!week) return null;
+
+  // Font size scaling
+  const scales = [0.85, 1, 1.15];
+  const scale = scales[fontSizeIndex] || 1;
 
   return (
     <View 
@@ -81,36 +89,44 @@ export const WeekRow = ({
             onPress={() => onDatePress(date)}
             activeOpacity={0.7}
           >
-            <View style={[styles.dateNumWrap, isToday && styles.todayBadge]}>
-              <Text style={[
-                styles.dayNum,
-                (isSunday || isRedDay) && { color: '#E8735A' },
-                di === 6 && !isRedDay && { color: '#5A8FE8' },
-                isToday && { color: '#FFFFFF', fontWeight: '800' },
-                isSelected && !isToday && { fontWeight: '800' }
-              ]}>
-                {date.getDate()}
-              </Text>
+            <View style={styles.topArea}>
+              <View style={[styles.dateNumWrap, isToday && styles.todayBadge]}>
+                <Text style={[
+                  styles.dayNum,
+                  { fontSize: 13 },
+                  (isSunday || isRedDay) && { color: '#E8735A' },
+                  di === 6 && !isRedDay && { color: '#5A8FE8' },
+                  isToday && { color: '#FFFFFF', fontWeight: '800' },
+                  isSelected && !isToday && { fontWeight: '800' }
+                ]}>
+                  {date.getDate()}
+                </Text>
+              </View>
+
+              {dayMemos.length > (isFocusView ? 1 : 2) && (
+                <Text style={[styles.moreBadge, { fontSize: 9 }]}>+{dayMemos.length - (isFocusView ? 1 : 2)}</Text>
+              )}
             </View>
 
             {combinedName && (
               <Text style={[
                 styles.holidayText, 
+                { fontSize: 8 },
                 !isRedDay && anniversaryName && { color: '#8A8A8A' }
               ]} numberOfLines={1}>
                 {combinedName}
               </Text>
             )}
 
-            <View style={styles.memoPreviewArea}>
+            <View style={[
+              styles.memoPreviewArea, 
+              { flex: 1, justifyContent: alignment === 'center' ? 'center' : 'flex-start' }
+            ]}>
               {dayMemos.slice(0, isFocusView ? 1 : 2).map((m) => (
                 <View key={m.id} style={[styles.memoChip, { backgroundColor: m.color || '#C8F0C4' }]}>
-                  <Text style={styles.memoChipText} numberOfLines={1}>{m.title}</Text>
+                  <Text style={[styles.memoChipText, { fontSize: 9 * scale }]} numberOfLines={1}>{m.title}</Text>
                 </View>
               ))}
-              {dayMemos.length > (isFocusView ? 1 : 2) && (
-                <Text style={styles.moreBadge}>+{dayMemos.length - (isFocusView ? 1 : 2)}</Text>
-              )}
             </View>
           </TouchableOpacity>
         );
@@ -132,6 +148,12 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     paddingHorizontal: 4,
     backgroundColor: '#FFFFFF',
+    flexDirection: 'column',
+  },
+  topArea: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   dayBorderRight: {
     borderRightWidth: 1,
@@ -169,7 +191,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   memoPreviewArea: {
-    marginTop: 4,
+    marginTop: 2,
     gap: 2,
   },
   memoChip: {
@@ -188,6 +210,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: '#8A8A8A',
     fontWeight: '600',
-    marginLeft: 2,
+    marginRight: 2,
   },
 });

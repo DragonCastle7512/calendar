@@ -11,12 +11,15 @@ import { HEADER_HEIGHT, MONTH_NAMES } from '../constants/calendar';
 interface CalendarHeaderProps {
   viewDate: Date;
   onChangeMonth: (offset: number) => void;
+  onOpenSettings: () => void;
 }
 
-export const CalendarHeader = ({ viewDate, onChangeMonth }: CalendarHeaderProps) => {
+export const CalendarHeader = ({ viewDate, onChangeMonth, onOpenSettings }: CalendarHeaderProps) => {
   return (
     <View style={styles.header}>
-        <View style={styles.headerSpacer} />
+        <TouchableOpacity onPress={onOpenSettings} style={styles.settingsBtn}>
+          <Ionicons name="settings-outline" size={22} color="#8A8A8A" />
+        </TouchableOpacity>     
         <View style={styles.headerContainer}>
           <TouchableOpacity onPress={() => onChangeMonth(-1)} style={styles.navBtn}>
             <Ionicons name="chevron-back" size={20} color="#cacaca" />
@@ -40,9 +43,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+    backgroundColor: '#FFFFFF',
   },
-  headerSpacer: { flex: 1 },
+  headerSpacer: { width: 44 },
+  settingsBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headerContainer: {
+    flex: 1,
     flexDirection: 'row',
     gap: 15,
     alignItems: 'center',

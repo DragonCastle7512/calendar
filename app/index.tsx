@@ -25,6 +25,8 @@ import { MemoForm } from '../src/components/MemoForm';
 import { WeekRow } from '../src/components/WeekRow';
 import { WidgetModal } from '../src/components/WidgetModal';
 import {
+  APP_ALIGNMENT_KEY,
+  APP_FONT_SIZE_KEY,
   CELL_WIDTH,
   FIXED_ANNIVERSARIES,
   HOLIDAY_CACHE_KEY,
@@ -34,8 +36,8 @@ import {
   PROXY_TOKEN,
   PROXY_URL,
   WEEKDAY_HEIGHT,
-  WIDGET_FONT_SIZE_KEY,
-  WIDGET_ALIGNMENT_KEY
+  WIDGET_ALIGNMENT_KEY,
+  WIDGET_FONT_SIZE_KEY
 } from '../src/constants/calendar';
 import { MemoEntry, MemosState } from '../src/types/calendar';
 import { getDateKey } from '../src/utils/date';
@@ -46,11 +48,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as SystemUI from 'expo-system-ui';
 import { requestWidgetUpdate } from 'react-native-android-widget';
 import { MemoWidget } from '../src/widgets/MemoWidget';
-
-// 시스템 루트 뷰 배경 투명화
-if (Platform.OS === 'android') {
-  SystemUI.setBackgroundColorAsync('rgba(0,0,0,0)');
-}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -67,8 +64,15 @@ export default function CalendarMemoApp() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
-  const [fontSizeIndex, setFontSizeIndex] = useState(1);
-  const [alignment, setAlignment] = useState<'top' | 'center'>('top');
+  const [isSettingsFromWidget, setIsSettingsFromWidget] = useState(false);
+  
+  // 위젯 설정 상태
+  const [widgetFontSizeIndex, setWidgetFontSizeIndex] = useState(1);
+  const [widgetAlignment, setWidgetAlignment] = useState<'top' | 'center'>('top');
+
+  // 앱 설정 상태
+  const [appFontSizeIndex, setAppFontSizeIndex] = useState(1);
+  const [appAlignment, setAppAlignment] = useState<'top' | 'center'>('top');
   
   // 위젯 전용 상태
   const [widgetSelectedDate, setWidgetSelectedDate] = useState<string | null>(null);
@@ -81,7 +85,13 @@ export default function CalendarMemoApp() {
   const lastBackPressed = useRef<number>(0);
   const appState = useRef(AppState.currentState);
 
-  // 위젯 업데이트 통합 함수
+  // 시스템 배경 투명화
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      SystemUI.setBackgroundColorAsync('rgba(0,0,0,0)');
+    }
+  }, []);
+
   const triggerWidgetUpdate = async () => {
     if (Platform.OS !== 'android') return;
     try {
@@ -124,8 +134,8 @@ export default function CalendarMemoApp() {
             holidays={widgetHolidays} 
             anniversaries={widgetAnniversaries} 
             renderTime={Date.now()}
-            fontSizeIndex={fontSizeIndex}
-            alignment={alignment}
+            fontSizeIndex={widgetFontSizeIndex}
+            alignment={widgetAlignment}
           />
         ),
         widgetNotFound: () => {}
@@ -141,7 +151,7 @@ export default function CalendarMemoApp() {
       appState.current = nextAppState;
     });
     return () => subscription.remove();
-  }, [memos, holidays, fontSizeIndex, alignment]);
+  }, [memos, holidays, widgetFontSizeIndex, widgetAlignment]);
 
   // 딥링크 파라미터 처리
   useEffect(() => {
@@ -149,6 +159,7 @@ export default function CalendarMemoApp() {
     const urlSource = params.source as string;
 
     if (urlSource === 'settings' || params.settings === 'true') {
+      setIsSettingsFromWidget(true);
       setSettingsVisible(true);
       InteractionManager.runAfterInteractions(() => {
         router.setParams({ source: undefined, settings: undefined });
@@ -157,7 +168,6 @@ export default function CalendarMemoApp() {
       const targetDate = new Date(urlDate);
       if (!isNaN(targetDate.getTime())) {
         InteractionManager.runAfterInteractions(() => {
-          console.log(`[DeepLink] Applying state for date: ${urlDate}`);
           setViewDate(targetDate);
           if (urlSource === 'widget') {
             setWidgetSelectedDate(urlDate);
@@ -167,14 +177,11 @@ export default function CalendarMemoApp() {
             setWidgetSelectedDate(null);
           }
           setModalVisible(false);
-
-          // 파라미터 제거하여 무한 루프 방지
-          console.log(`[DeepLink] Clearing params`);
           router.setParams({ date: undefined, source: undefined });
         });
       }
     }
-  }, [params.date, params.source]);
+  }, [params.date, params.source, params.settings]);
 
   useEffect(() => { 
     loadMemos();
@@ -196,7 +203,11 @@ export default function CalendarMemoApp() {
   useEffect(() => {
     const backAction = () => {
       if (settingsVisible) {
-        setSettingsVisible(false);
+        if (isSettingsFromWidget) {
+          BackHandler.exitApp();
+        } else {
+          setSettingsVisible(false);
+        }
         return true;
       }
       if (widgetSelectedDate) {
@@ -229,33 +240,52 @@ export default function CalendarMemoApp() {
     };
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => backHandler.remove();
-  }, [selectedDate, modalVisible, widgetSelectedDate, settingsVisible]);
+  }, [selectedDate, modalVisible, widgetSelectedDate, settingsVisible, isSettingsFromWidget]);
 
   const loadMemos = async () => {
     try {
-      const [savedMemos, savedFontSize, savedAlignment] = await Promise.all([
+      const [
+        savedMemos, 
+        savedWidgetFontSize, 
+        savedWidgetAlignment,
+        savedAppFontSize,
+        savedAppAlignment
+      ] = await Promise.all([
         AsyncStorage.getItem(MEMO_STORAGE_KEY),
         AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY),
-        AsyncStorage.getItem(WIDGET_ALIGNMENT_KEY)
+        AsyncStorage.getItem(WIDGET_ALIGNMENT_KEY),
+        AsyncStorage.getItem(APP_FONT_SIZE_KEY),
+        AsyncStorage.getItem(APP_ALIGNMENT_KEY)
       ]);
       if (savedMemos) setMemos(JSON.parse(savedMemos));
-      if (savedFontSize) setFontSizeIndex(parseInt(savedFontSize, 10));
-      if (savedAlignment) setAlignment(savedAlignment as 'top' | 'center');
+      if (savedWidgetFontSize) setWidgetFontSizeIndex(parseInt(savedWidgetFontSize, 10));
+      if (savedWidgetAlignment) setWidgetAlignment(savedWidgetAlignment as 'top' | 'center');
+      if (savedAppFontSize) setAppFontSizeIndex(parseInt(savedAppFontSize, 10));
+      if (savedAppAlignment) setAppAlignment(savedAppAlignment as 'top' | 'center');
     } catch (e) {}
   };
 
   const updateSettings = async (index: number, align: 'top' | 'center') => {
-    setFontSizeIndex(index);
-    setAlignment(align);
-    await Promise.all([
-      AsyncStorage.setItem(WIDGET_FONT_SIZE_KEY, index.toString()),
-      AsyncStorage.setItem(WIDGET_ALIGNMENT_KEY, align)
-    ]);
-    setSettingsVisible(false);
-    // 상태가 업데이트된 후 위젯 업데이트를 트리거하기 위해 InteractionManager 사용 또는 직접 호출
-    InteractionManager.runAfterInteractions(() => {
+    if (isSettingsFromWidget) {
+      setWidgetFontSizeIndex(index);
+      setWidgetAlignment(align);
+      await Promise.all([
+        AsyncStorage.setItem(WIDGET_FONT_SIZE_KEY, index.toString()),
+        AsyncStorage.setItem(WIDGET_ALIGNMENT_KEY, align)
+      ]);
       triggerWidgetUpdate();
-    });
+      setTimeout(() => {
+        BackHandler.exitApp();
+      }, 200);
+    } else {
+      setAppFontSizeIndex(index);
+      setAppAlignment(align);
+      await Promise.all([
+        AsyncStorage.setItem(APP_FONT_SIZE_KEY, index.toString()),
+        AsyncStorage.setItem(APP_ALIGNMENT_KEY, align)
+      ]);
+      setSettingsVisible(false);
+    }
   };
 
   const syncHolidays = async (year: number) => {
@@ -397,13 +427,30 @@ export default function CalendarMemoApp() {
   const targetForMemos = widgetSelectedDate || selectedDate || '';
   const selectedMemos = targetForMemos ? (memos[targetForMemos] || []) : [];
 
+  const showCalendar = !widgetSelectedDate && (!settingsVisible || !isSettingsFromWidget);
+
   return (
-    <SafeAreaView style={[styles.container, widgetSelectedDate ? { backgroundColor: 'rgba(0,0,0,0)' } : { backgroundColor: '#FFFFFF' }]} edges={['top', 'bottom']}>
+    <SafeAreaView 
+      style={[
+        styles.container, 
+        (widgetSelectedDate || (settingsVisible && isSettingsFromWidget)) 
+          ? { backgroundColor: 'rgba(0,0,0,0)' } 
+          : { backgroundColor: '#FFFFFF' }
+      ]} 
+      edges={['top', 'bottom']}
+    >
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       
-      {!widgetSelectedDate && !settingsVisible && (
+      {showCalendar && (
         <>
-          <CalendarHeader viewDate={viewDate} onChangeMonth={changeMonth} />
+          <CalendarHeader 
+            viewDate={viewDate} 
+            onChangeMonth={changeMonth} 
+            onOpenSettings={() => {
+              setIsSettingsFromWidget(false);
+              setSettingsVisible(true);
+            }}
+          />
           <View style={styles.weekDaysRow}>
             {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
               <View key={d} style={styles.weekDayCell}><Text style={[styles.weekDayText, i === 0 && { color: '#E8735A' }, i === 6 && { color: '#5A8FE8' }]}>{d}</Text></View>
@@ -413,12 +460,24 @@ export default function CalendarMemoApp() {
       )}
 
       <View style={styles.mainArea}>
-        {!widgetSelectedDate && !settingsVisible && (
+        {showCalendar && (
           <PanGestureHandler onHandlerStateChange={onGestureEvent} activeOffsetX={[-30, 30]}>
             <Animated.View style={[{ flex: 1 }, { transform: [{ translateX }], opacity }]}>
               {selectedDate && selectedWeekIndex !== -1 ? (
                 <Animated.View style={[styles.focusContainer, { opacity: focusAnim }]}>
-                  <WeekRow week={weeks[selectedWeekIndex]} wi={selectedWeekIndex} viewDate={viewDate} selectedDate={selectedDate} todayStr={todayStr} memos={memos} holidays={holidays} onDatePress={onDatePress} isFocusView />
+                  <WeekRow 
+                    week={weeks[selectedWeekIndex]} 
+                    wi={selectedWeekIndex} 
+                    viewDate={viewDate} 
+                    selectedDate={selectedDate} 
+                    todayStr={todayStr} 
+                    memos={memos} 
+                    holidays={holidays} 
+                    onDatePress={onDatePress} 
+                    isFocusView 
+                    fontSizeIndex={appFontSizeIndex} // 앱 폰트 크기 적용
+                    alignment={appAlignment} // 앱 배치 적용
+                  />
                   <View style={styles.focusMemoArea}>
                     <View style={styles.memoPanelHeader}>
                       <View style={{ flex: 1 }}>
@@ -444,11 +503,39 @@ export default function CalendarMemoApp() {
                       {selectedMemos.length === 0 ? <View style={styles.emptyState}><Text style={styles.emptyText}>+ 버튼으로 일정을 추가하세요</Text></View> : selectedMemos.map((item, idx) => <DraggableMemoItem key={item.id} item={item} index={idx} totalCount={selectedMemos.length} itemHeights={itemHeights} onDelete={deleteMemo} onEdit={openEditModal} onReorder={reorderMemos} />)}
                     </ScrollView>
                   </View>
-                  {selectedWeekIndex < 5 ? <WeekRow week={weeks[selectedWeekIndex + 1]} wi={selectedWeekIndex + 1} viewDate={viewDate} selectedDate={selectedDate} todayStr={todayStr} memos={memos} holidays={holidays} onDatePress={onDatePress} isFocusView /> : <View style={[styles.weekRow, { height: 75, backgroundColor: '#FAFAFA' }]} />}
+                  {selectedWeekIndex < 5 ? (
+                    <WeekRow 
+                      week={weeks[selectedWeekIndex + 1]} 
+                      wi={selectedWeekIndex + 1} 
+                      viewDate={viewDate} 
+                      selectedDate={selectedDate} 
+                      todayStr={todayStr} 
+                      memos={memos} 
+                      holidays={holidays} 
+                      onDatePress={onDatePress} 
+                      isFocusView 
+                      fontSizeIndex={appFontSizeIndex}
+                      alignment={appAlignment}
+                    />
+                  ) : <View style={[styles.weekRow, { height: 75, backgroundColor: '#FAFAFA' }]} />}
                 </Animated.View>
               ) : (
                 <View style={styles.calendarGrid}>
-                  {weeks.map((week, wi) => <WeekRow key={wi} week={week} wi={wi} viewDate={viewDate} selectedDate={selectedDate} todayStr={todayStr} memos={memos} holidays={holidays} onDatePress={onDatePress} />)}
+                  {weeks.map((week, wi) => (
+                    <WeekRow 
+                      key={wi} 
+                      week={week} 
+                      wi={wi} 
+                      viewDate={viewDate} 
+                      selectedDate={selectedDate} 
+                      todayStr={todayStr} 
+                      memos={memos} 
+                      holidays={holidays} 
+                      onDatePress={onDatePress} 
+                      fontSizeIndex={appFontSizeIndex}
+                      alignment={appAlignment}
+                    />
+                  ))}
                 </View>
               )}
             </Animated.View>
@@ -484,9 +571,10 @@ export default function CalendarMemoApp() {
           <SettingsModal
             visible={settingsVisible}
             onClose={() => setSettingsVisible(false)}
-            fontSizeIndex={fontSizeIndex}
-            alignment={alignment}
+            fontSizeIndex={isSettingsFromWidget ? widgetFontSizeIndex : appFontSizeIndex}
+            alignment={isSettingsFromWidget ? widgetAlignment : appAlignment}
             onSave={updateSettings}
+            isFromWidget={isSettingsFromWidget}
           />
         )}
       </View>

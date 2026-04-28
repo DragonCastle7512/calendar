@@ -20,6 +20,7 @@ interface SettingsModalProps {
   fontSizeIndex: number;
   alignment: 'top' | 'center';
   onSave: (fontSizeIndex: number, alignment: 'top' | 'center') => void;
+  isFromWidget?: boolean;
 }
 
 export const SettingsModal = ({
@@ -28,6 +29,7 @@ export const SettingsModal = ({
   fontSizeIndex: initialFontSize,
   alignment: initialAlignment,
   onSave,
+  isFromWidget = false,
 }: SettingsModalProps) => {
   const [localFontSize, setLocalFontSize] = useState(initialFontSize);
   const [localAlignment, setLocalAlignment] = useState(initialAlignment);
@@ -40,12 +42,15 @@ export const SettingsModal = ({
   }, [visible, initialFontSize, initialAlignment]);
 
   const handleBack = () => {
-    BackHandler.exitApp();
+    if (isFromWidget) {
+      BackHandler.exitApp();
+    } else {
+      onClose();
+    }
   };
 
   const handleSave = () => {
     onSave(localFontSize, localAlignment);
-    BackHandler.exitApp();
   };
 
   const fontSizes = [
@@ -84,7 +89,7 @@ export const SettingsModal = ({
             </View>
 
             <View style={styles.content}>
-              <Text style={styles.settingsLabel}>위젯 글자 크기</Text>
+              <Text style={styles.settingsLabel}>글자 크기</Text>
               <View style={styles.optionRow}>
                 {fontSizes.map((size) => (
                   <TouchableOpacity
@@ -105,7 +110,7 @@ export const SettingsModal = ({
                 ))}
               </View>
 
-              <Text style={styles.settingsLabel}>위젯 일정 배치</Text>
+              <Text style={styles.settingsLabel}>메모 정렬</Text>
               <View style={styles.optionRow}>
                 {alignments.map((align) => (
                   <TouchableOpacity
@@ -136,7 +141,7 @@ export const SettingsModal = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)', 
+    backgroundColor: '#ffffff7c', 
     justifyContent: 'center',
     alignItems: 'center',
   },

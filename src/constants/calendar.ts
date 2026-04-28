@@ -6,6 +6,8 @@ export const MEMO_STORAGE_KEY = '@calendar_memos_v4';
 export const HOLIDAY_CACHE_KEY = '@holiday_cache_v7_';
 export const WIDGET_FONT_SIZE_KEY = '@widget_font_size_v1';
 export const WIDGET_ALIGNMENT_KEY = '@widget_alignment_v1';
+export const APP_FONT_SIZE_KEY = '@app_font_size_v1';
+export const APP_ALIGNMENT_KEY = '@app_alignment_v1';
 export const WIDGET_SETTINGS_OPEN_KEY = '@widget_settings_open_v1';
 export const SYNC_EXPIRY_MS = 1000 * 60 * 60 * 24 * 90; // 90일
 

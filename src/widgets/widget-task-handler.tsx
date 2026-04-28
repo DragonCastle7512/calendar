@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
 import { Linking } from 'react-native';
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
-import { FIXED_ANNIVERSARIES, HOLIDAY_CACHE_KEY, MEMO_STORAGE_KEY, OFFLINE_HOLIDAYS } from '../constants/calendar';
+import { FIXED_ANNIVERSARIES, HOLIDAY_CACHE_KEY, MEMO_STORAGE_KEY, OFFLINE_HOLIDAYS, WIDGET_FONT_SIZE_KEY } from '../constants/calendar';
 import { MemosState } from '../types/calendar';
 import { getDateKey } from '../utils/date';
 import { getLunarHoliday } from '../utils/holiday';
@@ -14,19 +14,21 @@ let cachedHolidays: { [key: string]: string } = {};
 
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
   try {
-    const [savedMemos, savedWidgetDate] = await Promise.all([
+    const [savedMemos, savedWidgetDate, savedFontSize] = await Promise.all([
       AsyncStorage.getItem(MEMO_STORAGE_KEY),
-      AsyncStorage.getItem(WIDGET_DATE_KEY)
+      AsyncStorage.getItem(WIDGET_DATE_KEY),
+      AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY)
     ]);
 
     let memos: MemosState = savedMemos ? JSON.parse(savedMemos) : {};
     let viewDate = savedWidgetDate ? new Date(savedWidgetDate) : new Date();
+    let fontSizeIndex = savedFontSize ? parseInt(savedFontSize, 10) : 1;
 
     switch (props.widgetAction) {
       case 'WIDGET_ADDED':
       case 'WIDGET_UPDATE':
       case 'WIDGET_RESIZED':
-        await render(props, viewDate, memos);
+        await render(props, viewDate, memos, fontSizeIndex);
         break;
       case 'WIDGET_CLICK':
         if (props.clickAction && props.clickAction.startsWith('OPEN_DATE')) {
@@ -38,9 +40,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
             const processedIdsStr = await AsyncStorage.getItem(PROCESSED_IDS_KEY);
             let processedIds: string[] = processedIdsStr ? JSON.parse(processedIdsStr) : [];
             
-            if (processedIds.includes(clickId)) {
-              return;
-            }
+            if (processedIds.includes(clickId)) return;
             
             processedIds.push(clickId);
             if (processedIds.length > 50) processedIds.shift();
@@ -52,11 +52,14 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
         } else if (props.clickAction === 'PREV_MONTH') {
           viewDate.setMonth(viewDate.getMonth() - 1);
           await AsyncStorage.setItem(WIDGET_DATE_KEY, viewDate.toISOString());
-          await render(props, viewDate, memos);
+          await render(props, viewDate, memos, fontSizeIndex);
         } else if (props.clickAction === 'NEXT_MONTH') {
           viewDate.setMonth(viewDate.getMonth() + 1);
           await AsyncStorage.setItem(WIDGET_DATE_KEY, viewDate.toISOString());
-          await render(props, viewDate, memos);
+          await render(props, viewDate, memos, fontSizeIndex);
+        } else if (props.clickAction === 'OPEN_SETTINGS_APP') {
+          const url = 'calendarapp://?source=settings';
+          await Linking.openURL(url);
         }
         break;
       default:
@@ -67,7 +70,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
   }
 }
 
-async function render(props: WidgetTaskHandlerProps, viewDate: Date, memos: MemosState) {
+async function render(props: WidgetTaskHandlerProps, viewDate: Date, memos: MemosState, fontSizeIndex: number) {
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const todayStr = getDateKey(new Date());
@@ -117,6 +120,7 @@ async function render(props: WidgetTaskHandlerProps, viewDate: Date, memos: Memo
       holidays={holidays}
       anniversaries={anniversaries}
       renderTime={Date.now()}
+      fontSizeIndex={fontSizeIndex}
     />
   );
 }

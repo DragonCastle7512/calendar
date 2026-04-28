@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  AppState,
   BackHandler,
   Dimensions,
   InteractionManager,
@@ -32,15 +33,24 @@ import {
   OFFLINE_HOLIDAYS,
   PROXY_TOKEN,
   PROXY_URL,
-  WEEKDAY_HEIGHT
+  WEEKDAY_HEIGHT,
+  WIDGET_FONT_SIZE_KEY,
+  WIDGET_ALIGNMENT_KEY
 } from '../src/constants/calendar';
 import { MemoEntry, MemosState } from '../src/types/calendar';
 import { getDateKey } from '../src/utils/date';
 import { getLunarHoliday } from '../src/utils/holiday';
 
+import { SettingsModal } from '@/src/components/SettingsModal';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as SystemUI from 'expo-system-ui';
 import { requestWidgetUpdate } from 'react-native-android-widget';
 import { MemoWidget } from '../src/widgets/MemoWidget';
+
+// 시스템 루트 뷰 배경 투명화
+if (Platform.OS === 'android') {
+  SystemUI.setBackgroundColorAsync('rgba(0,0,0,0)');
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -56,6 +66,9 @@ export default function CalendarMemoApp() {
   const [newContent, setNewContent] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [fontSizeIndex, setFontSizeIndex] = useState(1);
+  const [alignment, setAlignment] = useState<'top' | 'center'>('top');
   
   // 위젯 전용 상태
   const [widgetSelectedDate, setWidgetSelectedDate] = useState<string | null>(null);
@@ -66,16 +79,85 @@ export default function CalendarMemoApp() {
   const itemHeights = useRef<number[]>([]);
   const syncedYears = useRef<Set<number>>(new Set());
   const lastBackPressed = useRef<number>(0);
+  const appState = useRef(AppState.currentState);
+
+  // 위젯 업데이트 통합 함수
+  const triggerWidgetUpdate = async () => {
+    if (Platform.OS !== 'android') return;
+    try {
+      const savedWidgetDate = await AsyncStorage.getItem('@widget_view_date');
+      const widgetViewDate = savedWidgetDate ? new Date(savedWidgetDate) : new Date();
+      const year = widgetViewDate.getFullYear();
+      const month = widgetViewDate.getMonth();
+      const todayStr = getDateKey(new Date());
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const lastDate = new Date(year, month + 1, 0).getDate();
+      const prevMonthLastDate = new Date(year, month, 0).getDate();
+      const days: Date[] = [];
+      for (let i = firstDay - 1; i >= 0; i--) days.push(new Date(year, month - 1, prevMonthLastDate - i));
+      for (let i = 1; i <= lastDate; i++) days.push(new Date(year, month, i));
+      while (days.length < 42) days.push(new Date(year, month + 1, days.length - lastDate - firstDay + 2));
+      const rows: Date[][] = [];
+      for (let i = 0; i < 42; i += 7) rows.push(days.slice(i, i + 7));
+
+      const widgetHolidays: { [key: string]: string } = {};
+      const widgetAnniversaries: { [key: string]: string } = {};
+      days.forEach(d => {
+        const dKey = getDateKey(d);
+        const mDay = dKey.slice(5);
+        const hName = holidays[dKey] || getLunarHoliday(d) || OFFLINE_HOLIDAYS[mDay];
+        if (hName) widgetHolidays[dKey] = hName;
+        const aName = FIXED_ANNIVERSARIES[mDay];
+        if (aName) widgetAnniversaries[dKey] = aName;
+      });
+
+      requestWidgetUpdate({
+        widgetName: 'Memo',
+        renderWidget: () => (
+          <MemoWidget 
+            year={year} 
+            month={month} 
+            days={rows} 
+            memos={memos} 
+            todayStr={todayStr} 
+            holidays={widgetHolidays} 
+            anniversaries={widgetAnniversaries} 
+            renderTime={Date.now()}
+            fontSizeIndex={fontSizeIndex}
+            alignment={alignment}
+          />
+        ),
+        widgetNotFound: () => {}
+      });
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (appState.current.match(/active/) && nextAppState.match(/inactive|background/)) {
+        triggerWidgetUpdate();
+      }
+      appState.current = nextAppState;
+    });
+    return () => subscription.remove();
+  }, [memos, holidays, fontSizeIndex, alignment]);
 
   // 딥링크 파라미터 처리
   useEffect(() => {
     const urlDate = params.date as string;
     const urlSource = params.source as string;
 
-    if (urlDate) {
+    if (urlSource === 'settings' || params.settings === 'true') {
+      setSettingsVisible(true);
+      InteractionManager.runAfterInteractions(() => {
+        router.setParams({ source: undefined, settings: undefined });
+      });
+    } else if (urlDate) {
       const targetDate = new Date(urlDate);
       if (!isNaN(targetDate.getTime())) {
         InteractionManager.runAfterInteractions(() => {
+          console.log(`[DeepLink] Applying state for date: ${urlDate}`);
           setViewDate(targetDate);
           if (urlSource === 'widget') {
             setWidgetSelectedDate(urlDate);
@@ -86,6 +168,8 @@ export default function CalendarMemoApp() {
           }
           setModalVisible(false);
 
+          // 파라미터 제거하여 무한 루프 방지
+          console.log(`[DeepLink] Clearing params`);
           router.setParams({ date: undefined, source: undefined });
         });
       }
@@ -111,6 +195,10 @@ export default function CalendarMemoApp() {
 
   useEffect(() => {
     const backAction = () => {
+      if (settingsVisible) {
+        setSettingsVisible(false);
+        return true;
+      }
       if (widgetSelectedDate) {
         if (modalVisible) {
           setModalVisible(false);
@@ -141,70 +229,33 @@ export default function CalendarMemoApp() {
     };
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => backHandler.remove();
-  }, [selectedDate, modalVisible, widgetSelectedDate]);
-
-  useEffect(() => {
-    if (Platform.OS === 'android') {
-      const updateWidget = async () => {
-        try {
-          const savedWidgetDate = await AsyncStorage.getItem('@widget_view_date');
-          const widgetViewDate = savedWidgetDate ? new Date(savedWidgetDate) : new Date();
-          const year = widgetViewDate.getFullYear();
-          const month = widgetViewDate.getMonth();
-          const todayStr = getDateKey(new Date());
-
-          const firstDay = new Date(year, month, 1).getDay();
-          const lastDate = new Date(year, month + 1, 0).getDate();
-          const prevMonthLastDate = new Date(year, month, 0).getDate();
-          const days: Date[] = [];
-          for (let i = firstDay - 1; i >= 0; i--) days.push(new Date(year, month - 1, prevMonthLastDate - i));
-          for (let i = 1; i <= lastDate; i++) days.push(new Date(year, month, i));
-          while (days.length < 42) days.push(new Date(year, month + 1, days.length - lastDate - firstDay + 2));
-          const rows: Date[][] = [];
-          for (let i = 0; i < 42; i += 7) rows.push(days.slice(i, i + 7));
-
-          const widgetHolidays: { [key: string]: string } = {};
-          const widgetAnniversaries: { [key: string]: string } = {};
-          days.forEach(d => {
-            const dKey = getDateKey(d);
-            const mDay = dKey.slice(5);
-            const hName = holidays[dKey] || getLunarHoliday(d) || OFFLINE_HOLIDAYS[mDay];
-            if (hName) widgetHolidays[dKey] = hName;
-            const aName = FIXED_ANNIVERSARIES[mDay];
-            if (aName) widgetAnniversaries[dKey] = aName;
-          });
-
-          setTimeout(() => {
-            try {
-              requestWidgetUpdate({
-                widgetName: 'Memo',
-                renderWidget: () => (
-                  <MemoWidget 
-                    year={year} 
-                    month={month} 
-                    days={rows} 
-                    memos={memos} 
-                    todayStr={todayStr} 
-                    holidays={widgetHolidays} 
-                    anniversaries={widgetAnniversaries} 
-                    renderTime={Date.now()}
-                  />
-                ),
-                widgetNotFound: () => {}
-              });
-            } catch (err) {}
-          }, 100);
-        } catch (e) {}
-      };
-      updateWidget();
-    }
-  }, [memos, holidays]);
+  }, [selectedDate, modalVisible, widgetSelectedDate, settingsVisible]);
 
   const loadMemos = async () => {
     try {
-      const saved = await AsyncStorage.getItem(MEMO_STORAGE_KEY);
-      if (saved) setMemos(JSON.parse(saved));
+      const [savedMemos, savedFontSize, savedAlignment] = await Promise.all([
+        AsyncStorage.getItem(MEMO_STORAGE_KEY),
+        AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY),
+        AsyncStorage.getItem(WIDGET_ALIGNMENT_KEY)
+      ]);
+      if (savedMemos) setMemos(JSON.parse(savedMemos));
+      if (savedFontSize) setFontSizeIndex(parseInt(savedFontSize, 10));
+      if (savedAlignment) setAlignment(savedAlignment as 'top' | 'center');
     } catch (e) {}
+  };
+
+  const updateSettings = async (index: number, align: 'top' | 'center') => {
+    setFontSizeIndex(index);
+    setAlignment(align);
+    await Promise.all([
+      AsyncStorage.setItem(WIDGET_FONT_SIZE_KEY, index.toString()),
+      AsyncStorage.setItem(WIDGET_ALIGNMENT_KEY, align)
+    ]);
+    setSettingsVisible(false);
+    // 상태가 업데이트된 후 위젯 업데이트를 트리거하기 위해 InteractionManager 사용 또는 직접 호출
+    InteractionManager.runAfterInteractions(() => {
+      triggerWidgetUpdate();
+    });
   };
 
   const syncHolidays = async (year: number) => {
@@ -350,7 +401,7 @@ export default function CalendarMemoApp() {
     <SafeAreaView style={[styles.container, widgetSelectedDate ? { backgroundColor: 'rgba(0,0,0,0)' } : { backgroundColor: '#FFFFFF' }]} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       
-      {!widgetSelectedDate && (
+      {!widgetSelectedDate && !settingsVisible && (
         <>
           <CalendarHeader viewDate={viewDate} onChangeMonth={changeMonth} />
           <View style={styles.weekDaysRow}>
@@ -362,7 +413,7 @@ export default function CalendarMemoApp() {
       )}
 
       <View style={styles.mainArea}>
-        {!widgetSelectedDate && (
+        {!widgetSelectedDate && !settingsVisible && (
           <PanGestureHandler onHandlerStateChange={onGestureEvent} activeOffsetX={[-30, 30]}>
             <Animated.View style={[{ flex: 1 }, { transform: [{ translateX }], opacity }]}>
               {selectedDate && selectedWeekIndex !== -1 ? (
@@ -427,6 +478,15 @@ export default function CalendarMemoApp() {
             onSave={saveMemo}
             onCancel={() => setModalVisible(false)}
             editingId={editingId}
+          />
+        )}
+        {settingsVisible && (
+          <SettingsModal
+            visible={settingsVisible}
+            onClose={() => setSettingsVisible(false)}
+            fontSizeIndex={fontSizeIndex}
+            alignment={alignment}
+            onSave={updateSettings}
           />
         )}
       </View>

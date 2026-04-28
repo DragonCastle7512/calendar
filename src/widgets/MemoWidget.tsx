@@ -12,6 +12,7 @@ interface MemoWidgetProps {
   todayStr: string;
   holidays: { [key: string]: string };
   anniversaries: { [key: string]: string };
+  renderTime: number;
 }
 
 export function MemoWidget({ 
@@ -21,10 +22,11 @@ export function MemoWidget({
   memos = {},
   todayStr = '',
   holidays = {},
-  anniversaries = {}
+  anniversaries = {},
+  renderTime
 }: MemoWidgetProps) {
   const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
-  const alpha = '4D'; // 30% transparency for other months
+  const alpha = '4D'; 
 
   return (
     <FlexWidget
@@ -35,7 +37,6 @@ export function MemoWidget({
         flexDirection: 'column',
       }}
     >
-      {/* 헤더 */}
       <FlexWidget style={{ 
         flexDirection: 'row', 
         width: 'match_parent',
@@ -57,7 +58,6 @@ export function MemoWidget({
         </FlexWidget>
       </FlexWidget>
 
-      {/* 요일 */}
       <FlexWidget style={{ 
         flexDirection: 'row', 
         width: 'match_parent',
@@ -75,7 +75,6 @@ export function MemoWidget({
         ))}
       </FlexWidget>
 
-      {/* 달력 그리드 */}
       <FlexWidget style={{ flex: 1, width: 'match_parent', flexDirection: 'column' }}>
         {days.map((week, wi) => (
           <FlexWidget key={wi} style={{ 
@@ -104,7 +103,6 @@ export function MemoWidget({
               const isHoliday = !!holidayName;
               const isRedDay = isSunday || isHoliday;
 
-              // 색상 결정
               let dateColor = '#333333';
               if (isRedDay) dateColor = '#E8735A';
               else if (isSaturday) dateColor = '#5A8FE8';
@@ -113,7 +111,6 @@ export function MemoWidget({
               const displayName = holidayName || anniversaryName;
               let textNameColor = isHoliday ? '#E8735A' : '#8A8A8A';
 
-              // 투명도 처리
               if (!isCurrentMonth) {
                 dateColor = `${dateColor}${alpha}`;
                 textNameColor = `${textNameColor}${alpha}`;
@@ -122,8 +119,8 @@ export function MemoWidget({
               return (
                 <FlexWidget
                   key={di}
-                  clickAction="OPEN_DATE"
-                  clickActionData={{ date: dateKey }}
+                  clickAction={`OPEN_DATE:${dateKey}`}
+                  clickActionData={{ date: dateKey, renderTime }}
                   style={{
                     flex: 1,
                     width: 0,

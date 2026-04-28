@@ -39,14 +39,8 @@ import { getDateKey } from '../src/utils/date';
 import { getLunarHoliday } from '../src/utils/holiday';
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as SystemUI from 'expo-system-ui';
 import { requestWidgetUpdate } from 'react-native-android-widget';
 import { MemoWidget } from '../src/widgets/MemoWidget';
-
-// 시스템 루트 뷰 배경 투명화
-if (Platform.OS === 'android') {
-  SystemUI.setBackgroundColorAsync('rgba(0,0,0,0)');
-}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -92,7 +86,6 @@ export default function CalendarMemoApp() {
           }
           setModalVisible(false);
 
-          // 파라미터 제거하여 무한 루프 방지
           router.setParams({ date: undefined, source: undefined });
         });
       }
@@ -186,7 +179,16 @@ export default function CalendarMemoApp() {
               requestWidgetUpdate({
                 widgetName: 'Memo',
                 renderWidget: () => (
-                  <MemoWidget year={year} month={month} days={rows} memos={memos} todayStr={todayStr} holidays={widgetHolidays} anniversaries={widgetAnniversaries} />
+                  <MemoWidget 
+                    year={year} 
+                    month={month} 
+                    days={rows} 
+                    memos={memos} 
+                    todayStr={todayStr} 
+                    holidays={widgetHolidays} 
+                    anniversaries={widgetAnniversaries} 
+                    renderTime={Date.now()}
+                  />
                 ),
                 widgetNotFound: () => {}
               });

@@ -39,7 +39,7 @@ import {
   WIDGET_ALIGNMENT_KEY,
   WIDGET_FONT_SIZE_KEY
 } from '../src/constants/calendar';
-import { MemoEntry, MemosState } from '../src/types/calendar';
+import { MemoEntry, MemosState, RepeatType } from '../src/types/calendar';
 import { getDateKey } from '../src/utils/date';
 import { getLunarHoliday } from '../src/utils/holiday';
 
@@ -61,6 +61,8 @@ export default function CalendarMemoApp() {
   const [holidays, setHolidays] = useState<{ [date: string]: string }>({});
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
+  const [selectedColor, setSelectedColor] = useState(MEMO_COLORS[0]);
+  const [repeat, setRepeat] = useState<RepeatType>('none');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
@@ -328,36 +330,153 @@ export default function CalendarMemoApp() {
   };
 
   const openAddModal = () => {
-    setEditingId(null); setNewTitle(''); setNewContent(''); setModalVisible(true);
+    const randomColor = MEMO_COLORS[Math.floor(Math.random() * MEMO_COLORS.length)];
+    setEditingId(null); setNewTitle(''); setNewContent(''); setSelectedColor(randomColor); setRepeat('none'); setModalVisible(true);
   };
   const openEditModal = (item: MemoEntry) => {
-    setEditingId(item.id); setNewTitle(item.title); setNewContent(item.content); setModalVisible(true);
+    setEditingId(item.id); setNewTitle(item.title); setNewContent(item.content); setSelectedColor(item.color); setRepeat(item.repeat || 'none'); setModalVisible(true);
+  };
+
+  const updateMemoColor = async (id: string, color: string) => {
+    const target = widgetSelectedDate || selectedDate;
+    if (!target) return;
+    const updated = { ...memos };
+    
+    const currentMemo = updated[target]?.find(m => m.id === id);
+    const groupId = currentMemo?.repeatGroupId;
+
+    if (groupId) {
+      Object.keys(updated).forEach(date => {
+        updated[date] = updated[date].map(m => 
+          m.repeatGroupId === groupId ? { ...m, color } : m
+        );
+      });
+    } else if (updated[target]) {
+      updated[target] = updated[target].map(m => m.id === id ? { ...m, color } : m);
+    }
+    
+    setMemos(updated);
+    await AsyncStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(updated));
   };
 
   const saveMemo = async () => {
     const target = widgetSelectedDate || selectedDate;
     if (!newTitle.trim() || !target) return;
     const updated = { ...memos };
-    const dateMemos = updated[target] || [];
+    
     if (editingId) {
-      updated[target] = dateMemos.map(m => m.id === editingId ? { ...m, title: newTitle, content: newContent } : m);
+      const currentMemo = updated[target]?.find(m => m.id === editingId);
+      const oldRepeat = currentMemo?.repeat || 'none';
+      const oldGroupId = currentMemo?.repeatGroupId;
+
+      if (oldRepeat !== 'none' && oldGroupId && repeat === 'none') {
+        Object.keys(updated).forEach(date => {
+          updated[date] = updated[date].filter(m => m.repeatGroupId !== oldGroupId || (date === target && m.id === editingId));
+          if (updated[date].length === 0) delete updated[date];
+        });
+      }
+
+      if (oldRepeat === 'none' && repeat !== 'none') {
+        const repeatGroupId = `group_${Date.now()}`;
+        const startDate = new Date(target);
+        const limit = repeat === 'weekly' ? 104 : repeat === 'monthly' ? 24 : 10;
+        
+        for (let i = 0; i < limit; i++) {
+          const d = new Date(startDate);
+          if (repeat === 'weekly') d.setDate(startDate.getDate() + i * 7);
+          else if (repeat === 'monthly') d.setMonth(startDate.getMonth() + i);
+          else if (repeat === 'yearly') d.setFullYear(startDate.getFullYear() + i);
+          
+          const dKey = getDateKey(d);
+          if (i === 0) {
+            updated[target] = (updated[target] || []).map(m => 
+              m.id === editingId ? { ...m, title: newTitle, content: newContent, color: selectedColor, repeat, repeatGroupId } : m
+            );
+          } else {
+            const newMemo: MemoEntry = { 
+              id: `${Date.now()}_${i}`, 
+              title: newTitle, 
+              content: newContent, 
+              color: selectedColor, 
+              repeat, 
+              repeatGroupId 
+            };
+            updated[dKey] = [...(updated[dKey] || []), newMemo];
+          }
+        }
+      } else if (oldRepeat !== 'none' && repeat !== 'none' && oldGroupId) {
+        Object.keys(updated).forEach(date => {
+          updated[date] = updated[date].map(m => 
+            m.repeatGroupId === oldGroupId ? { ...m, title: newTitle, content: newContent, color: selectedColor, repeat } : m
+          );
+        });
+      } else {
+        updated[target] = (updated[target] || []).map(m => 
+          m.id === editingId ? { ...m, title: newTitle, content: newContent, color: selectedColor, repeat } : m
+        );
+      }
     } else {
-      const colorIdx = dateMemos.length % MEMO_COLORS.length;
-      updated[target] = [...dateMemos, { id: Date.now().toString(), title: newTitle, content: newContent, color: MEMO_COLORS[colorIdx] }];
+      const repeatGroupId = repeat !== 'none' ? `group_${Date.now()}` : undefined;
+      
+      if (repeat === 'none') {
+        updated[target] = [...(updated[target] || []), { id: Date.now().toString(), title: newTitle, content: newContent, color: selectedColor, repeat: 'none' }];
+      } else {
+        const startDate = new Date(target);
+        const limit = repeat === 'weekly' ? 104 : repeat === 'monthly' ? 24 : 10;
+        for (let i = 0; i < limit; i++) {
+          const d = new Date(startDate);
+          if (repeat === 'weekly') d.setDate(startDate.getDate() + i * 7);
+          else if (repeat === 'monthly') d.setMonth(startDate.getMonth() + i);
+          else if (repeat === 'yearly') d.setFullYear(startDate.getFullYear() + i);
+          
+          const dKey = getDateKey(d);
+          const newMemo: MemoEntry = { 
+            id: `${Date.now()}_${i}`, 
+            title: newTitle, 
+            content: newContent, 
+            color: selectedColor, 
+            repeat, 
+            repeatGroupId 
+          };
+          updated[dKey] = [...(updated[dKey] || []), newMemo];
+        }
+      }
     }
     setMemos(updated);
     await AsyncStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(updated));
-    setModalVisible(false); setNewTitle(''); setNewContent(''); setEditingId(null);
+    setModalVisible(false); setNewTitle(''); setNewContent(''); setSelectedColor(MEMO_COLORS[0]); setRepeat('none'); setEditingId(null);
+  };
+
+  const performDelete = async (date: string, id: string) => {
+    const updated = { ...memos };
+    if (updated[date]) {
+      updated[date] = updated[date].filter(m => m.id !== id);
+      if (updated[date].length === 0) delete updated[date];
+      setMemos(updated);
+      await AsyncStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(updated));
+    }
+  };
+
+  const performDeleteAll = async (groupId: string) => {
+    const updated = { ...memos };
+    Object.keys(updated).forEach(date => {
+      updated[date] = updated[date].filter(m => m.repeatGroupId !== groupId);
+      if (updated[date].length === 0) delete updated[date];
+    });
+    setMemos(updated);
+    await AsyncStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(updated));
   };
 
   const deleteMemo = async (id: string) => {
     const target = widgetSelectedDate || selectedDate;
     if (!target) return;
-    const updated = { ...memos };
-    updated[target] = updated[target].filter(m => m.id !== id);
-    if (updated[target].length === 0) delete updated[target];
-    setMemos(updated);
-    await AsyncStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(updated));
+    
+    const memoToDelete = memos[target]?.find(m => m.id === id);
+    if (memoToDelete?.repeatGroupId) {
+      performDeleteAll(memoToDelete.repeatGroupId!);
+    } else {
+      performDelete(target, id);
+    }
   };
 
   const reorderMemos = async (from: number, to: number) => {
@@ -380,7 +499,7 @@ export default function CalendarMemoApp() {
     const days: Date[] = [];
     for (let i = firstDay - 1; i >= 0; i--) days.push(new Date(year, month - 1, prevMonthLastDate - i));
     for (let i = 1; i <= lastDate; i++) days.push(new Date(year, month, i));
-    while (days.length < 42) days.push(new Date(year, month + 1, days.length - lastDate - firstDay + 2));
+    while (days.length < 42) days.push(new Date(year, month + 1, days.length - lastDate - firstDay + 1));
     const rows: Date[][] = [];
     for (let i = 0; i < 42; i += 7) rows.push(days.slice(i, i + 7));
     return rows;
@@ -498,9 +617,40 @@ export default function CalendarMemoApp() {
                       </View>
                       {!modalVisible && <TouchableOpacity style={styles.addBtn} onPress={openAddModal}><Ionicons name="add" size={22} color="#8A8A8A" /></TouchableOpacity>}
                     </View>
-                    {modalVisible && <MemoForm newTitle={newTitle} setNewTitle={setNewTitle} newContent={newContent} setNewContent={setNewContent} onCancel={() => setModalVisible(false)} onSave={saveMemo} editingId={editingId} />}
+                    {modalVisible && (
+                      <MemoForm 
+                        newTitle={newTitle} 
+                        setNewTitle={setNewTitle} 
+                        newContent={newContent} 
+                        setNewContent={setNewContent} 
+                        color={selectedColor}
+                        repeat={repeat}
+                        setRepeat={setRepeat}
+                        onCancel={() => setModalVisible(false)} 
+                        onSave={saveMemo} 
+                        editingId={editingId} 
+                      />
+                    )}
                     <ScrollView style={styles.memoList} showsVerticalScrollIndicator={false}>
-                      {selectedMemos.length === 0 ? <View style={styles.emptyState}><Text style={styles.emptyText}>+ 버튼으로 일정을 추가하세요</Text></View> : selectedMemos.map((item, idx) => <DraggableMemoItem key={item.id} item={item} index={idx} totalCount={selectedMemos.length} itemHeights={itemHeights} onDelete={deleteMemo} onEdit={openEditModal} onReorder={reorderMemos} />)}
+                      {selectedMemos.length === 0 ? (
+                        <View style={styles.emptyState}>
+                          <Text style={styles.emptyText}>+ 버튼으로 일정을 추가하세요</Text>
+                        </View>
+                      ) : (
+                        selectedMemos.map((item, idx) => (
+                          <DraggableMemoItem
+                            key={item.id} 
+                            item={item} 
+                            index={idx} 
+                            totalCount={selectedMemos.length} 
+                            itemHeights={itemHeights}
+                            onDelete={deleteMemo} 
+                            onEdit={openEditModal} 
+                            onReorder={reorderMemos} 
+                            onUpdateColor={updateMemoColor}
+                          />
+                        ))
+                      )}
                     </ScrollView>
                   </View>
                   {selectedWeekIndex < 5 ? (
@@ -555,6 +705,7 @@ export default function CalendarMemoApp() {
             onDelete={deleteMemo}
             onEdit={openEditModal}
             onReorder={reorderMemos}
+            onUpdateColor={updateMemoColor}
             onDateSelect={(date) => setWidgetSelectedDate(date)}
             itemHeights={itemHeights}
             modalVisible={modalVisible}
@@ -562,6 +713,9 @@ export default function CalendarMemoApp() {
             setNewTitle={setNewTitle}
             newContent={newContent}
             setNewContent={setNewContent}
+            color={selectedColor}
+            repeat={repeat}
+            setRepeat={setRepeat}
             onSave={saveMemo}
             onCancel={() => setModalVisible(false)}
             editingId={editingId}

@@ -10,6 +10,7 @@ import {
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { ITEM_HEIGHT } from '../constants/calendar';
 import { MemoEntry } from '../types/calendar';
+import { SelectionModal } from './SelectionModal';
 
 interface DraggableMemoItemProps {
   item: MemoEntry;
@@ -19,13 +20,15 @@ interface DraggableMemoItemProps {
   onDelete: (id: string) => void;
   onEdit: (item: MemoEntry) => void;
   onReorder: (from: number, to: number) => void;
+  onUpdateColor: (id: string, color: string) => void;
 }
 
-export const DraggableMemoItem = ({ item, index, totalCount, itemHeights, onDelete, onEdit, onReorder }: DraggableMemoItemProps) => {
+export const DraggableMemoItem = ({ item, index, totalCount, itemHeights, onDelete, onEdit, onReorder, onUpdateColor }: DraggableMemoItemProps) => {
   const dragY = useRef(new Animated.Value(0)).current;
   const entranceAnim = useRef(new Animated.Value(0)).current; // 등장 및 퇴장 애니메이션
   const [isDragging, setIsDragging] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
+  const [showColorModal, setShowColorModal] = useState(false);
 
   // 등장 애니메이션
   useEffect(() => {
@@ -151,9 +154,20 @@ export const DraggableMemoItem = ({ item, index, totalCount, itemHeights, onDele
       >
         <View style={styles.memoRowIndex}>
           <Text style={styles.memoRowNum}>{String(index + 1).padStart(2, '0')}</Text>
+          <TouchableOpacity 
+            style={[styles.colorPickerBtn, { backgroundColor: item.color }]} 
+            onPress={() => setShowColorModal(true)}
+          >
+            <Ionicons name="color-palette-outline" size={14} color="#555" />
+          </TouchableOpacity>
         </View>
         <View style={styles.memoRowContent}>
-          <Text style={styles.memoRowTitle}>{item.title}</Text>
+          <View style={styles.memoRowHeader}>
+            <Text style={styles.memoRowTitle}>{item.title}</Text>
+            {item.repeat && item.repeat !== 'none' && (
+              <Ionicons name="repeat" size={12} color="#8A8A8A" style={styles.repeatIcon} />
+            )}
+          </View>
           {item.content ? <Text style={styles.memoRowBody}>{item.content}</Text> : null}
         </View>
       </TouchableOpacity>
@@ -173,6 +187,14 @@ export const DraggableMemoItem = ({ item, index, totalCount, itemHeights, onDele
           </Animated.View>
         </PanGestureHandler>
       </View>
+
+      <SelectionModal
+        visible={showColorModal}
+        type="color"
+        selectedValue={item.color}
+        onSelect={(val) => onUpdateColor(item.id, val)}
+        onClose={() => setShowColorModal(false)}
+      />
     </Animated.View>
   );
 };
@@ -195,13 +217,38 @@ const styles = StyleSheet.create({
   memoRowIndex: {
     marginRight: 14,
     paddingTop: 1,
+    alignItems: 'center',
+    width: 26,
   },
   memoRowNum: {
     fontSize: 11,
     color: '#8A8A8A',
     fontWeight: '700',
+    marginBottom: 4,
+  },
+  colorPickerBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EEE',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
   memoRowContent: { flex: 1 },
+  memoRowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  repeatIcon: {
+    marginTop: 1,
+  },
   memoRowTitle: {
     fontSize: 15,
     fontWeight: '700',

@@ -13,11 +13,13 @@ import {
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { OFFLINE_HOLIDAYS } from '../constants/calendar';
-import { MemoEntry, MemosState } from '../types/calendar';
+import { MemoEntry, MemosState, RepeatType } from '../types/calendar';
 import { getDateKey } from '../utils/date';
 import { getLunarHoliday } from '../utils/holiday';
 import { DraggableMemoItem } from './DraggableMemoItem';
 import { MemoForm } from './MemoForm';
+
+
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const DAY_CELL_WIDTH = SCREEN_WIDTH / 7;
@@ -34,6 +36,7 @@ interface WidgetModalProps {
   onDelete: (id: string) => void;
   onEdit: (item: MemoEntry) => void;
   onReorder: (from: number, to: number) => void;
+  onUpdateColor: (id: string, color: string) => void;
   onDateSelect: (date: string) => void;
   itemHeights: React.MutableRefObject<number[]>;
   modalVisible: boolean;
@@ -41,6 +44,9 @@ interface WidgetModalProps {
   setNewTitle: (t: string) => void;
   newContent: string;
   setNewContent: (t: string) => void;
+  color: string;
+  repeat: RepeatType;
+  setRepeat: (v: RepeatType) => void;
   onSave: () => void;
   onCancel: () => void;
   editingId: string | null;
@@ -58,6 +64,7 @@ export const WidgetModal = ({
   onDelete,
   onEdit,
   onReorder,
+  onUpdateColor,
   onDateSelect,
   itemHeights,
   modalVisible,
@@ -65,6 +72,9 @@ export const WidgetModal = ({
   setNewTitle,
   newContent,
   setNewContent,
+  color,
+  repeat,
+  setRepeat,
   onSave,
   onCancel,
   editingId
@@ -188,6 +198,9 @@ export const WidgetModal = ({
                 setNewTitle={setNewTitle}
                 newContent={newContent}
                 setNewContent={setNewContent}
+                color={color}
+                repeat={repeat}
+                setRepeat={setRepeat}
                 onCancel={onCancel}
                 onSave={onSave}
                 editingId={editingId}
@@ -221,6 +234,7 @@ export const WidgetModal = ({
                     onDelete={onDelete}
                     onEdit={onEdit}
                     onReorder={onReorder}
+                    onUpdateColor={onUpdateColor}
                   />
                 ))
               )}

@@ -21,7 +21,11 @@ export const NORMAL_ROW_HEIGHT = CALENDAR_CONTENT_HEIGHT / CALENDAR_ROWS;
 
 export const ITEM_HEIGHT = 64;
 
-export const MEMO_COLORS = ['#C8F0C4', '#F0E4C4', '#C4D8F0', '#F0C4D4', '#E4C4F0'];
+export const MEMO_COLORS = [
+  '#C8F0C4', '#F0E4C4', '#C4D8F0', '#F0C4D4', '#E4C4F0',
+  '#FFE5B4', '#FFD1DC', '#E0B0FF', '#B0E0E6', '#9ed19e',
+  '#ffffba', '#CCCCFF', '#89CFF0', '#E5E4E2', '#AEC6CF', '#FFE4E1'
+];
 
 export const PROXY_URL = process.env.EXPO_PUBLIC_PROXY_URL || '';
 export const PROXY_TOKEN = process.env.EXPO_PUBLIC_PROXY_TOKEN || '';

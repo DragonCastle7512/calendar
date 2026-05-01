@@ -74,6 +74,7 @@ export const WeekRow = ({
         
         const isSunday = di === 0;
         const isRedDay = !!holidayName || !!lunarHolidayName || !!offlineHolidayName;
+        const sliceSize = (isFocusView ? 2 : 3) -(!isRedDay && anniversaryName ? 1 : 0) + (fontSizeIndex <= 1 ? 1 : 0);
 
         return (
           <TouchableOpacity
@@ -103,8 +104,8 @@ export const WeekRow = ({
                 </Text>
               </View>
 
-              {dayMemos.length > (isFocusView ? 1 : 2) && (
-                <Text style={[styles.moreBadge, { fontSize: 9 }]}>+{dayMemos.length - (isFocusView ? 1 : 2)}</Text>
+              {dayMemos.length > sliceSize && (
+                <Text style={[styles.moreBadge, { fontSize: 9 }]}>+{dayMemos.length - sliceSize}</Text>
               )}
             </View>
 
@@ -122,7 +123,7 @@ export const WeekRow = ({
               styles.memoPreviewArea, 
               { flex: 1, justifyContent: alignment === 'center' ? 'center' : 'flex-start' }
             ]}>
-              {dayMemos.slice(0, isFocusView ? 1 : 2).map((m) => (
+              {dayMemos.slice(0, sliceSize).map((m) => (
                 <View key={m.id} style={[styles.memoChip, { backgroundColor: m.color || '#C8F0C4' }]}>
                   <Text style={[styles.memoChipText, { fontSize: 9 * scale }]} numberOfLines={1}>{m.title}</Text>
                 </View>
@@ -195,8 +196,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   memoChip: {
-    paddingHorizontal: 4,
-    paddingVertical: 2,
+    paddingHorizontal: 2,
+    paddingVertical: 1,
     borderRadius: 0,
     marginBottom: 1,
   },

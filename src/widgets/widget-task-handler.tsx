@@ -14,48 +14,47 @@ let cachedHolidays: { [key: string]: string } = {};
 
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
   try {
-    const [savedMemos, savedWidgetDate, savedFontSize] = await Promise.all([
-      AsyncStorage.getItem(MEMO_STORAGE_KEY),
-      AsyncStorage.getItem(WIDGET_DATE_KEY),
-      AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY)
-    ]);
-
-    let memos: MemosState = savedMemos ? JSON.parse(savedMemos) : {};
-    let viewDate = savedWidgetDate ? new Date(savedWidgetDate) : new Date();
-    let fontSizeIndex = savedFontSize ? parseInt(savedFontSize, 10) : 1;
-
     switch (props.widgetAction) {
       case 'WIDGET_ADDED':
       case 'WIDGET_UPDATE':
-      case 'WIDGET_RESIZED':
+      case 'WIDGET_RESIZED': {
+        const [savedMemos, savedWidgetDate, savedFontSize] = await Promise.all([
+          AsyncStorage.getItem(MEMO_STORAGE_KEY),
+          AsyncStorage.getItem(WIDGET_DATE_KEY),
+          AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY)
+        ]);
+
+        let memos: MemosState = savedMemos ? JSON.parse(savedMemos) : {};
+        let viewDate = savedWidgetDate ? new Date(savedWidgetDate) : new Date();
+        let fontSizeIndex = savedFontSize ? parseInt(savedFontSize, 10) : 1;
         await render(props, viewDate, memos, fontSizeIndex);
         break;
+      }
       case 'WIDGET_CLICK':
         if (props.clickAction && props.clickAction.startsWith('OPEN_DATE')) {
           const clickedDate = props.clickActionData?.date;
-          const renderTime = props.clickActionData?.renderTime;
-          
-          if (clickedDate && renderTime) {
-            const clickId = `${clickedDate}-${renderTime}`;
-            const processedIdsStr = await AsyncStorage.getItem(PROCESSED_IDS_KEY);
-            let processedIds: string[] = processedIdsStr ? JSON.parse(processedIdsStr) : [];
-            
-            if (processedIds.includes(clickId)) return;
-            
-            processedIds.push(clickId);
-            if (processedIds.length > 50) processedIds.shift();
-            await AsyncStorage.setItem(PROCESSED_IDS_KEY, JSON.stringify(processedIds));
-
+          if (clickedDate) {
             const url = `calendarapp://?date=${clickedDate}&source=widget`;
             await Linking.openURL(url);
           }
-        } else if (props.clickAction === 'PREV_MONTH') {
-          viewDate.setMonth(viewDate.getMonth() - 1);
-          await AsyncStorage.setItem(WIDGET_DATE_KEY, viewDate.toISOString());
-          await render(props, viewDate, memos, fontSizeIndex);
-        } else if (props.clickAction === 'NEXT_MONTH') {
-          viewDate.setMonth(viewDate.getMonth() + 1);
-          await AsyncStorage.setItem(WIDGET_DATE_KEY, viewDate.toISOString());
+        } else if (props.clickAction === 'PREV_MONTH' || props.clickAction === 'NEXT_MONTH') {
+          const [savedMemos, savedWidgetDate, savedFontSize] = await Promise.all([
+            AsyncStorage.getItem(MEMO_STORAGE_KEY),
+            AsyncStorage.getItem(WIDGET_DATE_KEY),
+            AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY)
+          ]);
+
+          let memos: MemosState = savedMemos ? JSON.parse(savedMemos) : {};
+          let viewDate = savedWidgetDate ? new Date(savedWidgetDate) : new Date();
+          let fontSizeIndex = savedFontSize ? parseInt(savedFontSize, 10) : 1;
+
+          if (props.clickAction === 'PREV_MONTH') {
+            viewDate.setMonth(viewDate.getMonth() - 1);
+          } else {
+            viewDate.setMonth(viewDate.getMonth() + 1);
+          }
+          
+          AsyncStorage.setItem(WIDGET_DATE_KEY, viewDate.toISOString());
           await render(props, viewDate, memos, fontSizeIndex);
         } else if (props.clickAction === 'OPEN_SETTINGS_APP') {
           const url = 'calendarapp://?source=settings';

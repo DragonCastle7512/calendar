@@ -44,17 +44,16 @@ import { getDateKey } from '../src/utils/date';
 import { getLunarHoliday } from '../src/utils/holiday';
 
 import { SettingsModal } from '@/src/components/SettingsModal';
+import { MemoWidget } from '@/src/widgets/MemoWidget';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as SystemUI from 'expo-system-ui';
 import { requestWidgetUpdate } from 'react-native-android-widget';
-import { MemoWidget } from '../src/widgets/MemoWidget';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function CalendarMemoApp() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  
+
   const [viewDate, setViewDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [memos, setMemos] = useState<MemosState>({});
@@ -78,6 +77,7 @@ export default function CalendarMemoApp() {
   
   // 위젯 전용 상태
   const [widgetSelectedDate, setWidgetSelectedDate] = useState<string | null>(null);
+  const [widgetViewDateState, setWidgetViewDateState] = useState(new Date());
 
   const translateX = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(1)).current;
@@ -87,73 +87,73 @@ export default function CalendarMemoApp() {
   const lastBackPressed = useRef<number>(0);
   const appState = useRef(AppState.currentState);
 
-  // 시스템 배경 투명화
-  useEffect(() => {
-    if (Platform.OS === 'android') {
-      SystemUI.setBackgroundColorAsync('rgba(0,0,0,0)');
-    }
-  }, []);
-
-  const triggerWidgetUpdate = async () => {
+  const triggerWidgetUpdate = async (
+    latestMemos?: MemosState,
+    latestFontSize?: number,
+    latestAlignment?: 'top' | 'center',
+    latestWidgetDate?: Date,
+    force: boolean = false
+  ) => {
     if (Platform.OS !== 'android') return;
-    try {
-      const savedWidgetDate = await AsyncStorage.getItem('@widget_view_date');
-      const widgetViewDate = savedWidgetDate ? new Date(savedWidgetDate) : new Date();
-      const year = widgetViewDate.getFullYear();
-      const month = widgetViewDate.getMonth();
-      const todayStr = getDateKey(new Date());
+    
+    InteractionManager.runAfterInteractions(() => {
+      setTimeout(async () => {
+        try {
+          const widgetViewDate = latestWidgetDate || widgetViewDateState;
+          const year = widgetViewDate.getFullYear();
+          const month = widgetViewDate.getMonth();
+          const todayStr = getDateKey(new Date());
 
-      const firstDay = new Date(year, month, 1).getDay();
-      const lastDate = new Date(year, month + 1, 0).getDate();
-      const prevMonthLastDate = new Date(year, month, 0).getDate();
-      const days: Date[] = [];
-      for (let i = firstDay - 1; i >= 0; i--) days.push(new Date(year, month - 1, prevMonthLastDate - i));
-      for (let i = 1; i <= lastDate; i++) days.push(new Date(year, month, i));
-      while (days.length < 42) days.push(new Date(year, month + 1, days.length - lastDate - firstDay + 2));
-      const rows: Date[][] = [];
-      for (let i = 0; i < 42; i += 7) rows.push(days.slice(i, i + 7));
+          const targetMemos = latestMemos || memos;
+          const targetFontSize = latestFontSize !== undefined ? latestFontSize : widgetFontSizeIndex;
+          const targetAlignment = latestAlignment !== undefined ? latestAlignment : widgetAlignment;
 
-      const widgetHolidays: { [key: string]: string } = {};
-      const widgetAnniversaries: { [key: string]: string } = {};
-      days.forEach(d => {
-        const dKey = getDateKey(d);
-        const mDay = dKey.slice(5);
-        const hName = holidays[dKey] || getLunarHoliday(d) || OFFLINE_HOLIDAYS[mDay];
-        if (hName) widgetHolidays[dKey] = hName;
-        const aName = FIXED_ANNIVERSARIES[mDay];
-        if (aName) widgetAnniversaries[dKey] = aName;
-      });
+          const firstDay = new Date(year, month, 1).getDay();
+          const lastDate = new Date(year, month + 1, 0).getDate();
+          const prevMonthLastDate = new Date(year, month, 0).getDate();
+          const days: Date[] = [];
+          for (let i = firstDay - 1; i >= 0; i--) days.push(new Date(year, month - 1, prevMonthLastDate - i));
+          for (let i = 1; i <= lastDate; i++) days.push(new Date(year, month, i));
+          while (days.length < 42) days.push(new Date(year, month + 1, days.length - lastDate - firstDay + 1));
+          const rows: Date[][] = [];
+          for (let i = 0; i < 42; i += 7) rows.push(days.slice(i, i + 7));
 
-      requestWidgetUpdate({
-        widgetName: 'Memo',
-        renderWidget: () => (
-          <MemoWidget 
-            year={year} 
-            month={month} 
-            days={rows} 
-            memos={memos} 
-            todayStr={todayStr} 
-            holidays={widgetHolidays} 
-            anniversaries={widgetAnniversaries} 
-            renderTime={Date.now()}
-            fontSizeIndex={widgetFontSizeIndex}
-            alignment={widgetAlignment}
-          />
-        ),
-        widgetNotFound: () => {}
-      });
-    } catch (e) {}
-  };
+          const widgetHolidays: { [key: string]: string } = {};
+          const widgetAnniversaries: { [key: string]: string } = {};
+          days.forEach(d => {
+            const dKey = getDateKey(d);
+            const mDay = dKey.slice(5);
+            const hName = holidays[dKey] || getLunarHoliday(d) || OFFLINE_HOLIDAYS[mDay];
+            if (hName) widgetHolidays[dKey] = hName;
+            const aName = FIXED_ANNIVERSARIES[mDay];
+            if (aName) widgetAnniversaries[dKey] = aName;
+          });
 
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextAppState => {
-      if (appState.current.match(/active/) && nextAppState.match(/inactive|background/)) {
-        triggerWidgetUpdate();
-      }
-      appState.current = nextAppState;
+          requestWidgetUpdate({
+            widgetName: 'Memo',
+            renderWidget: () => (
+              <MemoWidget 
+                year={year} 
+                month={month} 
+                days={rows} 
+                memos={targetMemos} 
+                todayStr={todayStr} 
+                holidays={widgetHolidays} 
+                anniversaries={widgetAnniversaries} 
+                renderTime={Date.now()}
+                fontSizeIndex={targetFontSize}
+                alignment={targetAlignment}
+              />
+            ),
+            widgetNotFound: () => {}
+          });
+          
+        } catch (e) {
+          console.log('[DEBUG] Widget Update Error:', e);
+        }
+      }, 50);
     });
-    return () => subscription.remove();
-  }, [memos, holidays, widgetFontSizeIndex, widgetAlignment]);
+  };
 
   // 딥링크 파라미터 처리
   useEffect(() => {
@@ -174,6 +174,7 @@ export default function CalendarMemoApp() {
           if (urlSource === 'widget') {
             setWidgetSelectedDate(urlDate);
             setSelectedDate(null);
+            setWidgetViewDateState(new Date(targetDate.getFullYear(), targetDate.getMonth(), 1));
           } else {
             setSelectedDate(urlDate);
             setWidgetSelectedDate(null);
@@ -251,19 +252,22 @@ export default function CalendarMemoApp() {
         savedWidgetFontSize, 
         savedWidgetAlignment,
         savedAppFontSize,
-        savedAppAlignment
+        savedAppAlignment,
+        savedWidgetDate
       ] = await Promise.all([
         AsyncStorage.getItem(MEMO_STORAGE_KEY),
         AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY),
         AsyncStorage.getItem(WIDGET_ALIGNMENT_KEY),
         AsyncStorage.getItem(APP_FONT_SIZE_KEY),
-        AsyncStorage.getItem(APP_ALIGNMENT_KEY)
+        AsyncStorage.getItem(APP_ALIGNMENT_KEY),
+        AsyncStorage.getItem('@widget_view_date')
       ]);
       if (savedMemos) setMemos(JSON.parse(savedMemos));
       if (savedWidgetFontSize) setWidgetFontSizeIndex(parseInt(savedWidgetFontSize, 10));
       if (savedWidgetAlignment) setWidgetAlignment(savedWidgetAlignment as 'top' | 'center');
       if (savedAppFontSize) setAppFontSizeIndex(parseInt(savedAppFontSize, 10));
       if (savedAppAlignment) setAppAlignment(savedAppAlignment as 'top' | 'center');
+      if (savedWidgetDate) setWidgetViewDateState(new Date(savedWidgetDate));
     } catch (e) {}
   };
 
@@ -275,7 +279,7 @@ export default function CalendarMemoApp() {
         AsyncStorage.setItem(WIDGET_FONT_SIZE_KEY, index.toString()),
         AsyncStorage.setItem(WIDGET_ALIGNMENT_KEY, align)
       ]);
-      triggerWidgetUpdate();
+      triggerWidgetUpdate(memos, index, align, undefined, true);
       setTimeout(() => {
         BackHandler.exitApp();
       }, 200);
@@ -357,6 +361,7 @@ export default function CalendarMemoApp() {
     
     setMemos(updated);
     await AsyncStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(updated));
+    triggerWidgetUpdate(updated);
   };
 
   const saveMemo = async () => {
@@ -444,6 +449,7 @@ export default function CalendarMemoApp() {
     }
     setMemos(updated);
     await AsyncStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(updated));
+    triggerWidgetUpdate(updated);
     setModalVisible(false); setNewTitle(''); setNewContent(''); setSelectedColor(MEMO_COLORS[0]); setRepeat('none'); setEditingId(null);
   };
 
@@ -454,6 +460,7 @@ export default function CalendarMemoApp() {
       if (updated[date].length === 0) delete updated[date];
       setMemos(updated);
       await AsyncStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(updated));
+      triggerWidgetUpdate(updated);
     }
   };
 
@@ -465,6 +472,7 @@ export default function CalendarMemoApp() {
     });
     setMemos(updated);
     await AsyncStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(updated));
+    triggerWidgetUpdate(updated);
   };
 
   const deleteMemo = async (id: string) => {

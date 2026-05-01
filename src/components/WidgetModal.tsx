@@ -89,6 +89,29 @@ export const WidgetModal = ({
     return Array.from({ length: lastDate }, (_, i) => new Date(year, month, i + 1));
   }, [year, month]);
 
+  const processedDays = useMemo(() => {
+    return daysInMonth.map((date) => {
+      const dKey = getDateKey(date);
+      const mDay = dKey.slice(5);
+      const dayMemos = allMemos[dKey] || [];
+      const isSunday = date.getDay() === 0;
+      const isSaturday = date.getDay() === 6;
+      const holidayName = holidays[dKey] || getLunarHoliday(date) || OFFLINE_HOLIDAYS[mDay];
+      const isRedDay = !!holidayName;
+
+      return {
+        date,
+        dKey,
+        mDay,
+        dayMemos,
+        isSunday,
+        isSaturday,
+        holidayName,
+        isRedDay,
+      };
+    });
+  }, [daysInMonth, holidays, allMemos]);
+
   useEffect(() => {
     let timer: number;
     if (visible && scrollRef.current) {
@@ -143,16 +166,9 @@ export const WidgetModal = ({
                 snapToInterval={DAY_CELL_WIDTH}
                 decelerationRate="fast"
               >
-                {daysInMonth.map((date, i) => {
-                  const dKey = getDateKey(date);
-                  const mDay = dKey.slice(5);
+                {processedDays.map((item, i) => {
+                  const { date, dKey, dayMemos, isSunday, isSaturday, isRedDay } = item;
                   const isSelected = dKey === dateStr;
-                  const dayMemos = allMemos[dKey] || [];
-                  
-                  const isSunday = date.getDay() === 0;
-                  const isSaturday = date.getDay() === 6;
-                  
-                  const isRedDay = !!holidays[dKey] || !!getLunarHoliday(date) || !!OFFLINE_HOLIDAYS[mDay];
 
                   return (
                     <TouchableOpacity 
@@ -171,7 +187,7 @@ export const WidgetModal = ({
                       
                       {/* 메모 요약 (제목이 포함된 Bar 디자인) */}
                       <View style={styles.memoSummaryArea}>
-                        {dayMemos.slice(0, 2).map((memo) => (
+                        {dayMemos.slice(0, 3).map((memo) => (
                           <View 
                             key={memo.id} 
                             style={[styles.summaryBar, { backgroundColor: memo.color || '#C8F0C4' }]} 
@@ -181,8 +197,8 @@ export const WidgetModal = ({
                             </Text>
                           </View>
                         ))}
-                        {dayMemos.length > 2 && (
-                          <Text style={styles.summaryMore}>+{dayMemos.length - 2}</Text>
+                        {dayMemos.length > 3 && (
+                          <Text style={styles.summaryMore}>+{dayMemos.length - 3}</Text>
                         )}
                       </View>
                     </TouchableOpacity>

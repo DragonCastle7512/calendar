@@ -89,7 +89,7 @@ export function MemoWidget({
           <FlexWidget key={i} style={{ flex: 1, width: 0, alignItems: 'center', paddingVertical: 4 }}>
             <TextWidget 
               text={d} 
-              style={{ fontSize: 9 * scale, fontWeight: 'bold', color: i === 0 ? '#E8735A' : i === 6 ? '#5A8FE8' : '#8A8A8A' }} 
+              style={{ fontSize: 9, fontWeight: 'bold', color: i === 0 ? '#E8735A' : i === 6 ? '#5A8FE8' : '#8A8A8A' }} 
             />
           </FlexWidget>
         ))}
@@ -110,7 +110,6 @@ export function MemoWidget({
               const m = String(date.getMonth() + 1).padStart(2, '0');
               const d = String(date.getDate()).padStart(2, '0');
               const dateKey = `${y}-${m}-${d}`;
-              const monthDay = dateKey.slice(5);
               
               const isToday = dateKey === todayStr;
               const isCurrentMonth = date.getMonth() === month;
@@ -168,9 +167,9 @@ export function MemoWidget({
                         paddingTop: 1,
                       }}
                     />
-                    {dayMemos.length > 2 && (
+                    {dayMemos.length > 2 + (fontSizeIndex < 1 ? 1 : 0) && (
                       <TextWidget 
-                        text={`+${dayMemos.length - 2}`} 
+                        text={`+${dayMemos.length - 2 - (fontSizeIndex < 1 ? 1 : 0)}`} 
                         style={{ fontSize: 9, color: isCurrentMonth ? '#8A8A8A' : `#8A8A8A${alpha}`, textAlign: 'center' }} 
                       />
                     )}
@@ -192,7 +191,7 @@ export function MemoWidget({
                     flexDirection: 'column',
                     justifyContent: alignment === 'center' ? 'center' : 'flex-start'
                   }}>
-                    {dayMemos.slice(0, 2).map((memo) => {
+                    {dayMemos.slice(0, 2+(fontSizeIndex < 1 ? 1 : 0)).map((memo) => {
                       const memoBg = memo.color || '#C8F0C4';
                       const finalMemoBg = isCurrentMonth ? memoBg : `${memoBg}${alpha}`;
                       const memoTextColor = isCurrentMonth ? '#000000' : `#000000${alpha}`;
@@ -225,3 +224,5 @@ export function MemoWidget({
     </FlexWidget>
   );
 }
+
+

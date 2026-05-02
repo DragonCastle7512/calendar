@@ -39,6 +39,13 @@ export const SelectionModal = ({ visible, type, selectedValue, onSelect, onClose
                   style={[
                     styles.colorCircle,
                     { backgroundColor: color },
+                    color === 'transparent' && { 
+                      borderWidth: 1, 
+                      borderColor: '#EEE', 
+                      elevation: 0, 
+                      shadowOpacity: 0,
+                      backgroundColor: '#FAFAFA' 
+                    },
                     selectedValue === color && styles.selectedCircle,
                   ]}
                   onPress={() => {
@@ -46,7 +53,10 @@ export const SelectionModal = ({ visible, type, selectedValue, onSelect, onClose
                     onClose();
                   }}
                 >
-                  {selectedValue === color && <Ionicons name="checkmark" size={20} color="#555" />}
+                  {color === 'transparent' && (
+                    <Ionicons name="ban-outline" size={35} color="#CCC" style={{ position: 'absolute' }} />
+                  )}
+                  {selectedValue === color && <Ionicons name="checkmark" size={20} color={color === 'transparent' ? '#888' : '#555'} />}
                 </TouchableOpacity>
               ))}
             </ScrollView>

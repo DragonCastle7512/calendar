@@ -334,8 +334,7 @@ export default function CalendarMemoApp() {
   };
 
   const openAddModal = () => {
-    const randomColor = MEMO_COLORS[Math.floor(Math.random() * MEMO_COLORS.length)];
-    setEditingId(null); setNewTitle(''); setNewContent(''); setSelectedColor(randomColor); setRepeat('none'); setModalVisible(true);
+    setEditingId(null); setNewTitle(''); setNewContent(''); setSelectedColor(MEMO_COLORS[0]); setRepeat('none'); setModalVisible(true);
   };
   const openEditModal = (item: MemoEntry) => {
     setEditingId(item.id); setNewTitle(item.title); setNewContent(item.content); setSelectedColor(item.color); setRepeat(item.repeat || 'none'); setModalVisible(true);

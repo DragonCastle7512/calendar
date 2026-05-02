@@ -155,7 +155,15 @@ export const DraggableMemoItem = ({ item, index, totalCount, itemHeights, onDele
         <View style={styles.memoRowIndex}>
           <Text style={styles.memoRowNum}>{String(index + 1).padStart(2, '0')}</Text>
           <TouchableOpacity 
-            style={[styles.colorPickerBtn, { backgroundColor: item.color }]} 
+            style={[
+              styles.colorPickerBtn, 
+              { backgroundColor: item.color },
+              item.color === 'transparent' && { 
+                elevation: 0, 
+                shadowOpacity: 0, 
+                backgroundColor: '#FAFAFA' 
+              }
+            ]} 
             onPress={() => setShowColorModal(true)}
           >
             <Ionicons name="color-palette-outline" size={14} color="#555" />

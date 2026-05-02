@@ -193,7 +193,8 @@ export function MemoWidget({
                   }}>
                     {dayMemos.slice(0, 2+(fontSizeIndex < 1 ? 1 : 0)).map((memo) => {
                       const memoBg = memo.color || '#C8F0C4';
-                      const finalMemoBg = isCurrentMonth ? memoBg : `${memoBg}${alpha}`;
+                      const isBgColorHex = memoBg.startsWith('#');
+                      const finalMemoBg = (isCurrentMonth || !isBgColorHex) ? memoBg : `${memoBg}${alpha}`;
                       const memoTextColor = isCurrentMonth ? '#000000' : `#000000${alpha}`;
                       return (
                         <FlexWidget 

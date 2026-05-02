@@ -196,9 +196,12 @@ export default function CalendarMemoApp() {
   useEffect(() => { 
     loadMemos();
     const currentYear = viewDate.getFullYear();
-    syncHolidays(currentYear - 1);
-    syncHolidays(currentYear);
-    syncHolidays(currentYear + 1);
+    const syncAll = async () => {
+      await syncHolidays(currentYear);
+      await syncHolidays(currentYear + 1);
+      await syncHolidays(currentYear - 1);
+    };
+    syncAll();
   }, [viewDate.getFullYear()]);
 
   useEffect(() => {
@@ -313,18 +316,20 @@ export default function CalendarMemoApp() {
 
   const syncHolidays = async (year: number) => {
     if (syncedYears.current.has(year)) return;
-    syncedYears.current.add(year);
     const cacheKey = `${HOLIDAY_CACHE_KEY}${year}`;
     try {
       const saved = await AsyncStorage.getItem(cacheKey);
       if (saved) {
         const { data } = JSON.parse(saved);
         if (data) {
+          syncedYears.current.add(year);
           setHolidays(prev => ({ ...prev, ...data }));
           return;
         }
       }
       if (!PROXY_URL) return;
+      
+      syncedYears.current.add(year);
       const response = await fetch(`${PROXY_URL}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -346,6 +351,8 @@ export default function CalendarMemoApp() {
         }
         setHolidays(prev => ({ ...prev, ...holidayMap }));
         await AsyncStorage.setItem(cacheKey, JSON.stringify({ data: holidayMap, timestamp: Date.now() }));
+      } else {
+        syncedYears.current.delete(year);
       }
     } catch (e) { syncedYears.current.delete(year); }
   };

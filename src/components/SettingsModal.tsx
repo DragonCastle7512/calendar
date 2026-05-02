@@ -19,7 +19,8 @@ interface SettingsModalProps {
   onClose: () => void;
   fontSizeIndex: number;
   alignment: 'top' | 'center';
-  onSave: (fontSizeIndex: number, alignment: 'top' | 'center') => void;
+  showHolidays: boolean;
+  onSave: (fontSizeIndex: number, alignment: 'top' | 'center', showHolidays: boolean) => void;
   isFromWidget?: boolean;
 }
 
@@ -28,18 +29,21 @@ export const SettingsModal = ({
   onClose,
   fontSizeIndex: initialFontSize,
   alignment: initialAlignment,
+  showHolidays: initialShowHolidays,
   onSave,
   isFromWidget = false,
 }: SettingsModalProps) => {
   const [localFontSize, setLocalFontSize] = useState(initialFontSize);
   const [localAlignment, setLocalAlignment] = useState(initialAlignment);
+  const [localShowHolidays, setLocalShowHolidays] = useState(initialShowHolidays);
 
   useEffect(() => {
     if (visible) {
       setLocalFontSize(initialFontSize);
       setLocalAlignment(initialAlignment);
+      setLocalShowHolidays(initialShowHolidays);
     }
-  }, [visible, initialFontSize, initialAlignment]);
+  }, [visible, initialFontSize, initialAlignment, initialShowHolidays]);
 
   const handleBack = () => {
     if (isFromWidget) {
@@ -50,7 +54,7 @@ export const SettingsModal = ({
   };
 
   const handleSave = () => {
-    onSave(localFontSize, localAlignment);
+    onSave(localFontSize, localAlignment, localShowHolidays);
   };
 
   const fontSizes = [
@@ -126,6 +130,30 @@ export const SettingsModal = ({
                       localAlignment === align.value && styles.optionBtnTextActive
                     ]}>
                       {align.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.settingsLabel}>공휴일 표시</Text>
+              <View style={styles.optionRow}>
+                {[
+                  { label: '표시함', value: true },
+                  { label: '표시 안함', value: false },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.label}
+                    style={[
+                      styles.optionBtn,
+                      localShowHolidays === option.value && styles.optionBtnActive
+                    ]}
+                    onPress={() => setLocalShowHolidays(option.value)}
+                  >
+                    <Text style={[
+                      styles.optionBtnText,
+                      localShowHolidays === option.value && styles.optionBtnTextActive
+                    ]}>
+                      {option.label}
                     </Text>
                   </TouchableOpacity>
                 ))}

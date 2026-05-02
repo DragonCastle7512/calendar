@@ -2,15 +2,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
 import { Linking } from 'react-native';
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
-import { FIXED_ANNIVERSARIES, HOLIDAY_CACHE_KEY, MEMO_STORAGE_KEY, OFFLINE_HOLIDAYS, WIDGET_FONT_SIZE_KEY } from '../constants/calendar';
+import { 
+  FIXED_ANNIVERSARIES, 
+  HOLIDAY_CACHE_KEY, 
+  MEMO_STORAGE_KEY, 
+  OFFLINE_HOLIDAYS, 
+  WIDGET_FONT_SIZE_KEY,
+  WIDGET_ALIGNMENT_KEY,
+  WIDGET_SHOW_HOLIDAYS_KEY
+} from '../constants/calendar';
 import { MemosState } from '../types/calendar';
 import { getDateKey } from '../utils/date';
 import { getLunarHoliday } from '../utils/holiday';
 import { MemoWidget } from './MemoWidget';
 
 const WIDGET_DATE_KEY = '@widget_view_date';
-const PROCESSED_IDS_KEY = '@widget_processed_click_ids'; 
-let cachedHolidays: { [key: string]: string } = {};
 
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
   try {
@@ -18,16 +24,21 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
       case 'WIDGET_ADDED':
       case 'WIDGET_UPDATE':
       case 'WIDGET_RESIZED': {
-        const [savedMemos, savedWidgetDate, savedFontSize] = await Promise.all([
+        const [savedMemos, savedWidgetDate, savedFontSize, savedAlignment, savedShowHolidays] = await Promise.all([
           AsyncStorage.getItem(MEMO_STORAGE_KEY),
           AsyncStorage.getItem(WIDGET_DATE_KEY),
-          AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY)
+          AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY),
+          AsyncStorage.getItem(WIDGET_ALIGNMENT_KEY),
+          AsyncStorage.getItem(WIDGET_SHOW_HOLIDAYS_KEY)
         ]);
 
         let memos: MemosState = savedMemos ? JSON.parse(savedMemos) : {};
         let viewDate = savedWidgetDate ? new Date(savedWidgetDate) : new Date();
         let fontSizeIndex = savedFontSize ? parseInt(savedFontSize, 10) : 1;
-        await render(props, viewDate, memos, fontSizeIndex);
+        let alignment = (savedAlignment as 'top' | 'center') || 'top';
+        let showHolidays = savedShowHolidays !== null ? savedShowHolidays === 'true' : true;
+
+        await render(props, viewDate, memos, fontSizeIndex, alignment, showHolidays);
         break;
       }
       case 'WIDGET_CLICK':
@@ -38,15 +49,19 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
             await Linking.openURL(url);
           }
         } else if (props.clickAction === 'PREV_MONTH' || props.clickAction === 'NEXT_MONTH') {
-          const [savedMemos, savedWidgetDate, savedFontSize] = await Promise.all([
+          const [savedMemos, savedWidgetDate, savedFontSize, savedAlignment, savedShowHolidays] = await Promise.all([
             AsyncStorage.getItem(MEMO_STORAGE_KEY),
             AsyncStorage.getItem(WIDGET_DATE_KEY),
-            AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY)
+            AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY),
+            AsyncStorage.getItem(WIDGET_ALIGNMENT_KEY),
+            AsyncStorage.getItem(WIDGET_SHOW_HOLIDAYS_KEY)
           ]);
 
           let memos: MemosState = savedMemos ? JSON.parse(savedMemos) : {};
           let viewDate = savedWidgetDate ? new Date(savedWidgetDate) : new Date();
           let fontSizeIndex = savedFontSize ? parseInt(savedFontSize, 10) : 1;
+          let alignment = (savedAlignment as 'top' | 'center') || 'top';
+          let showHolidays = savedShowHolidays !== null ? savedShowHolidays === 'true' : true;
 
           if (props.clickAction === 'PREV_MONTH') {
             viewDate.setMonth(viewDate.getMonth() - 1);
@@ -55,7 +70,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
           }
           
           AsyncStorage.setItem(WIDGET_DATE_KEY, viewDate.toISOString());
-          await render(props, viewDate, memos, fontSizeIndex);
+          await render(props, viewDate, memos, fontSizeIndex, alignment, showHolidays);
         } else if (props.clickAction === 'OPEN_SETTINGS_APP') {
           const url = 'calendarapp://?source=settings';
           await Linking.openURL(url);
@@ -69,22 +84,27 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
   }
 }
 
-async function render(props: WidgetTaskHandlerProps, viewDate: Date, memos: MemosState, fontSizeIndex: number) {
+async function render(
+  props: WidgetTaskHandlerProps, 
+  viewDate: Date, 
+  memos: MemosState, 
+  fontSizeIndex: number,
+  alignment: 'top' | 'center',
+  showHolidays: boolean
+) {
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const todayStr = getDateKey(new Date());
 
   const cacheKey = `${HOLIDAY_CACHE_KEY}${year}`;
-  if (!cachedHolidays[cacheKey]) {
-    try {
-      const saved = await AsyncStorage.getItem(cacheKey);
-      if (saved) {
-        const { data } = JSON.parse(saved);
-        cachedHolidays[cacheKey] = data;
-      }
-    } catch (e) {}
-  }
-  const apiHolidays = cachedHolidays[cacheKey] || {};
+  let apiHolidays = {};
+  try {
+    const saved = await AsyncStorage.getItem(cacheKey);
+    if (saved) {
+      const { data } = JSON.parse(saved);
+      apiHolidays = data || {};
+    }
+  } catch (e) {}
 
   const firstDay = new Date(year, month, 1).getDay();
   const lastDate = new Date(year, month + 1, 0).getDate();
@@ -120,6 +140,8 @@ async function render(props: WidgetTaskHandlerProps, viewDate: Date, memos: Memo
       anniversaries={anniversaries}
       renderTime={Date.now()}
       fontSizeIndex={fontSizeIndex}
+      alignment={alignment}
+      showHolidays={showHolidays}
     />
   );
 }

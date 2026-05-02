@@ -28,6 +28,7 @@ interface WeekRowProps {
   onDatePress: (date: Date) => void;
   fontSizeIndex?: number;
   alignment?: 'top' | 'center';
+  showHolidays?: boolean;
 }
 
 export const WeekRow = ({
@@ -41,7 +42,8 @@ export const WeekRow = ({
   isFocusView = false,
   onDatePress,
   fontSizeIndex = 1,
-  alignment = 'top'
+  alignment = 'top',
+  showHolidays = true,
 }: WeekRowProps) => {
   if (!week) return null;
 
@@ -70,7 +72,7 @@ export const WeekRow = ({
         const lunarHolidayName = getLunarHoliday(date);
         const anniversaryName = FIXED_ANNIVERSARIES[monthDay];
         
-        const combinedName = holidayName || lunarHolidayName || offlineHolidayName || anniversaryName;
+        const combinedName = showHolidays ? (holidayName || lunarHolidayName || offlineHolidayName || anniversaryName) : null;
         
         const isSunday = di === 0;
         const isRedDay = !!holidayName || !!lunarHolidayName || !!offlineHolidayName;

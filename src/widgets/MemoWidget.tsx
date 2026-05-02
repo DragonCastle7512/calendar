@@ -18,6 +18,7 @@ interface MemoWidgetProps {
   renderTime: number;
   fontSizeIndex?: number;
   alignment?: 'top' | 'center';
+  showHolidays?: boolean;
 }
 
 export function MemoWidget({
@@ -30,7 +31,8 @@ export function MemoWidget({
   anniversaries = {},
   renderTime,
   fontSizeIndex = 1,
-  alignment = 'top'
+  alignment = 'top',
+  showHolidays = true
 }: MemoWidgetProps) {
   const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
   const alpha = '4D';
@@ -48,6 +50,7 @@ export function MemoWidget({
         flexDirection: 'column',
       }}
     >
+      {/* ... (header and weekdays unchanged) */}
       <FlexWidget style={{
         flexDirection: 'row',
         width: 'match_parent',
@@ -118,17 +121,16 @@ export function MemoWidget({
               const dayMemos = memos[dateKey] || [];
               
               const isSunday = di === 0;
-              const isSaturday = di === 6;
               const isHoliday = !!holidayName;
               const isRedDay = isSunday || isHoliday;
 
               let dateColor = '#333333';
-              if (isRedDay) dateColor = '#E8735A';
-              else if (isSaturday) dateColor = '#5A8FE8';
+              if (isRedDay) dateColor = '#E8735A'; // Always red for Sunday/Holiday
+              else if (di === 6) dateColor = '#5A8FE8'; // Saturday is always blue
               if (isToday && isCurrentMonth) dateColor = '#FFFFFF';
 
-              const displayName = holidayName || anniversaryName;
-              let textNameColor = isHoliday ? '#E8735A' : '#8A8A8A';
+              const displayName = showHolidays ? (holidayName || anniversaryName) : null;
+              let textNameColor = isHoliday && showHolidays ? '#E8735A' : '#8A8A8A';
 
               if (!isCurrentMonth) {
                 dateColor = `${dateColor}${alpha}`;

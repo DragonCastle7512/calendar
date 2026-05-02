@@ -27,6 +27,7 @@ import { WidgetModal } from '../src/components/WidgetModal';
 import {
   APP_ALIGNMENT_KEY,
   APP_FONT_SIZE_KEY,
+  APP_SHOW_HOLIDAYS_KEY,
   CELL_WIDTH,
   FIXED_ANNIVERSARIES,
   HOLIDAY_CACHE_KEY,
@@ -37,7 +38,8 @@ import {
   PROXY_URL,
   WEEKDAY_HEIGHT,
   WIDGET_ALIGNMENT_KEY,
-  WIDGET_FONT_SIZE_KEY
+  WIDGET_FONT_SIZE_KEY,
+  WIDGET_SHOW_HOLIDAYS_KEY
 } from '../src/constants/calendar';
 import { MemoEntry, MemosState, RepeatType } from '../src/types/calendar';
 import { getDateKey } from '../src/utils/date';
@@ -70,10 +72,12 @@ export default function CalendarMemoApp() {
   // 위젯 설정 상태
   const [widgetFontSizeIndex, setWidgetFontSizeIndex] = useState(1);
   const [widgetAlignment, setWidgetAlignment] = useState<'top' | 'center'>('top');
+  const [widgetShowHolidays, setWidgetShowHolidays] = useState(true);
 
   // 앱 설정 상태
   const [appFontSizeIndex, setAppFontSizeIndex] = useState(1);
   const [appAlignment, setAppAlignment] = useState<'top' | 'center'>('top');
+  const [appShowHolidays, setAppShowHolidays] = useState(true);
   
   // 위젯 전용 상태
   const [widgetSelectedDate, setWidgetSelectedDate] = useState<string | null>(null);
@@ -91,6 +95,7 @@ export default function CalendarMemoApp() {
     latestMemos?: MemosState,
     latestFontSize?: number,
     latestAlignment?: 'top' | 'center',
+    latestShowHolidays?: boolean,
     latestWidgetDate?: Date,
     force: boolean = false
   ) => {
@@ -107,6 +112,7 @@ export default function CalendarMemoApp() {
           const targetMemos = latestMemos || memos;
           const targetFontSize = latestFontSize !== undefined ? latestFontSize : widgetFontSizeIndex;
           const targetAlignment = latestAlignment !== undefined ? latestAlignment : widgetAlignment;
+          const targetShowHolidays = latestShowHolidays !== undefined ? latestShowHolidays : widgetShowHolidays;
 
           const firstDay = new Date(year, month, 1).getDay();
           const lastDate = new Date(year, month + 1, 0).getDate();
@@ -143,6 +149,7 @@ export default function CalendarMemoApp() {
                 renderTime={Date.now()}
                 fontSizeIndex={targetFontSize}
                 alignment={targetAlignment}
+                showHolidays={targetShowHolidays}
               />
             ),
             widgetNotFound: () => {}
@@ -251,44 +258,54 @@ export default function CalendarMemoApp() {
         savedMemos, 
         savedWidgetFontSize, 
         savedWidgetAlignment,
+        savedWidgetShowHolidays,
         savedAppFontSize,
         savedAppAlignment,
+        savedAppShowHolidays,
         savedWidgetDate
       ] = await Promise.all([
         AsyncStorage.getItem(MEMO_STORAGE_KEY),
         AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY),
         AsyncStorage.getItem(WIDGET_ALIGNMENT_KEY),
+        AsyncStorage.getItem(WIDGET_SHOW_HOLIDAYS_KEY),
         AsyncStorage.getItem(APP_FONT_SIZE_KEY),
         AsyncStorage.getItem(APP_ALIGNMENT_KEY),
+        AsyncStorage.getItem(APP_SHOW_HOLIDAYS_KEY),
         AsyncStorage.getItem('@widget_view_date')
       ]);
       if (savedMemos) setMemos(JSON.parse(savedMemos));
       if (savedWidgetFontSize) setWidgetFontSizeIndex(parseInt(savedWidgetFontSize, 10));
       if (savedWidgetAlignment) setWidgetAlignment(savedWidgetAlignment as 'top' | 'center');
+      if (savedWidgetShowHolidays) setWidgetShowHolidays(savedWidgetShowHolidays === 'true');
       if (savedAppFontSize) setAppFontSizeIndex(parseInt(savedAppFontSize, 10));
       if (savedAppAlignment) setAppAlignment(savedAppAlignment as 'top' | 'center');
+      if (savedAppShowHolidays) setAppShowHolidays(savedAppShowHolidays === 'true');
       if (savedWidgetDate) setWidgetViewDateState(new Date(savedWidgetDate));
     } catch (e) {}
   };
 
-  const updateSettings = async (index: number, align: 'top' | 'center') => {
+  const updateSettings = async (index: number, align: 'top' | 'center', showHolidays: boolean) => {
     if (isSettingsFromWidget) {
       setWidgetFontSizeIndex(index);
       setWidgetAlignment(align);
+      setWidgetShowHolidays(showHolidays);
       await Promise.all([
         AsyncStorage.setItem(WIDGET_FONT_SIZE_KEY, index.toString()),
-        AsyncStorage.setItem(WIDGET_ALIGNMENT_KEY, align)
+        AsyncStorage.setItem(WIDGET_ALIGNMENT_KEY, align),
+        AsyncStorage.setItem(WIDGET_SHOW_HOLIDAYS_KEY, showHolidays.toString())
       ]);
-      triggerWidgetUpdate(memos, index, align, undefined, true);
+      triggerWidgetUpdate(memos, index, align, showHolidays, undefined, true);
       setTimeout(() => {
         BackHandler.exitApp();
       }, 200);
     } else {
       setAppFontSizeIndex(index);
       setAppAlignment(align);
+      setAppShowHolidays(showHolidays);
       await Promise.all([
         AsyncStorage.setItem(APP_FONT_SIZE_KEY, index.toString()),
-        AsyncStorage.setItem(APP_ALIGNMENT_KEY, align)
+        AsyncStorage.setItem(APP_ALIGNMENT_KEY, align),
+        AsyncStorage.setItem(APP_SHOW_HOLIDAYS_KEY, showHolidays.toString())
       ]);
       setSettingsVisible(false);
     }
@@ -603,6 +620,7 @@ export default function CalendarMemoApp() {
                     isFocusView 
                     fontSizeIndex={appFontSizeIndex} // 앱 폰트 크기 적용
                     alignment={appAlignment} // 앱 배치 적용
+                    showHolidays={appShowHolidays}
                   />
                   <View style={styles.focusMemoArea}>
                     <View style={styles.memoPanelHeader}>
@@ -673,6 +691,7 @@ export default function CalendarMemoApp() {
                       isFocusView 
                       fontSizeIndex={appFontSizeIndex}
                       alignment={appAlignment}
+                      showHolidays={appShowHolidays}
                     />
                   ) : <View style={[styles.weekRow, { height: 75, backgroundColor: '#FAFAFA' }]} />}
                 </Animated.View>
@@ -691,6 +710,7 @@ export default function CalendarMemoApp() {
                       onDatePress={onDatePress} 
                       fontSizeIndex={appFontSizeIndex}
                       alignment={appAlignment}
+                      showHolidays={appShowHolidays}
                     />
                   ))}
                 </View>
@@ -734,6 +754,7 @@ export default function CalendarMemoApp() {
             onClose={() => setSettingsVisible(false)}
             fontSizeIndex={isSettingsFromWidget ? widgetFontSizeIndex : appFontSizeIndex}
             alignment={isSettingsFromWidget ? widgetAlignment : appAlignment}
+            showHolidays={isSettingsFromWidget ? widgetShowHolidays : appShowHolidays}
             onSave={updateSettings}
             isFromWidget={isSettingsFromWidget}
           />

@@ -128,7 +128,7 @@ export const DraggableMemoItem = ({ item, index, totalCount, itemHeights, onDele
   return (
     <Animated.View
       onLayout={(e) => {
-        if (!isExiting) {
+        if (!isExiting && itemHeights?.current) {
           itemHeights.current[index] = e.nativeEvent.layout.height;
         }
       }}

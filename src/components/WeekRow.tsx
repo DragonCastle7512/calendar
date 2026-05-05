@@ -29,6 +29,7 @@ interface WeekRowProps {
   fontSizeIndex?: number;
   alignment?: 'top' | 'center';
   showHolidays?: boolean;
+  showOtherMonths?: boolean;
 }
 
 export const WeekRow = ({
@@ -44,6 +45,7 @@ export const WeekRow = ({
   fontSizeIndex = 1,
   alignment = 'top',
   showHolidays = true,
+  showOtherMonths = true,
 }: WeekRowProps) => {
   if (!week) return null;
 
@@ -78,6 +80,8 @@ export const WeekRow = ({
         const isRedDay = !!holidayName || !!lunarHolidayName || !!offlineHolidayName;
         const sliceSize = (isFocusView ? 2 : 3) -(!isRedDay && anniversaryName ? 1 : 0) + (fontSizeIndex <= 1 ? 1 : 0);
 
+        const showDateContent = isCurrentMonth || showOtherMonths;
+
         return (
           <TouchableOpacity
             key={di}
@@ -87,50 +91,54 @@ export const WeekRow = ({
               !isFocusView && wi < CALENDAR_ROWS - 1 && styles.dayBorderBottom,
               isSelected && styles.selectedDayCell,
               isFocusView && { paddingTop: 6 },
-              !isCurrentMonth && { opacity: 0.35 }
             ]}
             onPress={() => onDatePress(date)}
             activeOpacity={0.7}
+            disabled={!showDateContent}
           >
-            <View style={styles.topArea}>
-              <View style={[styles.dateNumWrap, isToday && styles.todayBadge]}>
-                <Text style={[
-                  styles.dayNum,
-                  { fontSize: 13 },
-                  (isSunday || isRedDay) && { color: '#E8735A' },
-                  di === 6 && !isRedDay && { color: '#5A8FE8' },
-                  isToday && { color: '#FFFFFF', fontWeight: '800' },
-                  isSelected && !isToday && { fontWeight: '800' }
-                ]}>
-                  {date.getDate()}
-                </Text>
-              </View>
+            {showDateContent && (
+              <View style={{ flex: 1, opacity: isCurrentMonth ? 1 : 0.35 }}>
+                <View style={styles.topArea}>
+                  <View style={[styles.dateNumWrap, isToday && styles.todayBadge]}>
+                    <Text style={[
+                      styles.dayNum,
+                      { fontSize: 13 },
+                      (isSunday || isRedDay) && { color: '#E8735A' },
+                      di === 6 && !isRedDay && { color: '#5A8FE8' },
+                      isToday && { color: '#FFFFFF', fontWeight: '800' },
+                      isSelected && !isToday && { fontWeight: '800' }
+                    ]}>
+                      {date.getDate()}
+                    </Text>
+                  </View>
 
-              {dayMemos.length > sliceSize && (
-                <Text style={[styles.moreBadge, { fontSize: 9 }]}>+{dayMemos.length - sliceSize}</Text>
-              )}
-            </View>
-
-            {combinedName && (
-              <Text style={[
-                styles.holidayText, 
-                { fontSize: 8 },
-                !isRedDay && anniversaryName && { color: '#8A8A8A' }
-              ]} numberOfLines={1}>
-                {combinedName}
-              </Text>
-            )}
-
-            <View style={[
-              styles.memoPreviewArea, 
-              { flex: 1, justifyContent: alignment === 'center' ? 'center' : 'flex-start' }
-            ]}>
-              {dayMemos.slice(0, sliceSize).map((m) => (
-                <View key={m.id} style={[styles.memoChip, { backgroundColor: m.color || '#C8F0C4' }]}>
-                  <Text style={[styles.memoChipText, { fontSize: 9 * scale }]} numberOfLines={1}>{m.title}</Text>
+                  {dayMemos.length > sliceSize && (
+                    <Text style={[styles.moreBadge, { fontSize: 9 }]}>+{dayMemos.length - sliceSize}</Text>
+                  )}
                 </View>
-              ))}
-            </View>
+
+                {combinedName && (
+                  <Text style={[
+                    styles.holidayText, 
+                    { fontSize: 8 },
+                    !isRedDay && anniversaryName && { color: '#8A8A8A' }
+                  ]} numberOfLines={1}>
+                    {combinedName}
+                  </Text>
+                )}
+
+                <View style={[
+                  styles.memoPreviewArea, 
+                  { flex: 1, justifyContent: alignment === 'center' ? 'center' : 'flex-start' }
+                ]}>
+                  {dayMemos.slice(0, sliceSize).map((m) => (
+                    <View key={m.id} style={[styles.memoChip, { backgroundColor: m.color || '#C8F0C4' }]}>
+                      <Text style={[styles.memoChipText, { fontSize: 9 * scale }]} numberOfLines={1}>{m.title}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
           </TouchableOpacity>
         );
       })}

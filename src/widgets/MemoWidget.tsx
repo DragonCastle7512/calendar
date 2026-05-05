@@ -19,6 +19,8 @@ interface MemoWidgetProps {
   fontSizeIndex?: number;
   alignment?: 'top' | 'center';
   showHolidays?: boolean;
+  showOtherMonths?: boolean;
+  widgetHeight?: number;
 }
 
 export function MemoWidget({
@@ -32,7 +34,9 @@ export function MemoWidget({
   renderTime,
   fontSizeIndex = 1,
   alignment = 'top',
-  showHolidays = true
+  showHolidays = true,
+  showOtherMonths = true,
+  widgetHeight = 250
 }: MemoWidgetProps) {
   const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
   const alpha = '4D';
@@ -40,6 +44,16 @@ export function MemoWidget({
   // Font size scaling
   const scales = [0.85, 1, 1.15];
   const scale = scales[fontSizeIndex] || 1;
+
+  const HEADER_HEIGHT = 56;
+  const WEEKDAYS_HEIGHT = 22;
+  const GRID_ROWS = 6;
+  const DATE_INFO_HEIGHT = 18;
+  const MEMO_BAR_HEIGHT = 15 * scale;
+
+  const cellHeight = (widgetHeight - HEADER_HEIGHT - WEEKDAYS_HEIGHT) / GRID_ROWS;
+  const availableHeight = cellHeight - DATE_INFO_HEIGHT;
+  const memoLimit = Math.max(1, Math.floor(availableHeight / MEMO_BAR_HEIGHT));
 
   return (
     <FlexWidget
@@ -50,7 +64,6 @@ export function MemoWidget({
         flexDirection: 'column',
       }}
     >
-      {/* ... (header and weekdays unchanged) */}
       <FlexWidget style={{
         flexDirection: 'row',
         width: 'match_parent',
@@ -137,14 +150,16 @@ export function MemoWidget({
                 textNameColor = `${textNameColor}${alpha}`;
               }
 
+              const showDateContent = isCurrentMonth || showOtherMonths;
+
               return (
                 <FlexWidget
                   key={di}
-                  clickAction={`OPEN_DATE:${dateKey}`}
-                  clickActionData={{ date: dateKey, renderTime }}
+                  clickAction={showDateContent ? `OPEN_DATE:${dateKey}` : undefined}
+                  clickActionData={showDateContent ? { date: dateKey, renderTime } : undefined}
                   style={{
                     flex: 1,
-                    width: 0,
+                    width: 'match_parent',
                     height: 'match_parent',
                     backgroundColor: '#ffffff',
                     borderRightWidth: di < 6 ? 1 : 0,
@@ -155,69 +170,73 @@ export function MemoWidget({
                     justifyContent: 'flex-start'
                   }}
                 >
-                  <FlexWidget style={{ width: 'match_parent', justifyContent: 'space-between', flexDirection: 'row' }}>
-                    <TextWidget
-                      text={String(date.getDate())}
-                      style={{
-                        fontSize: 11,
-                        alignSelf: 'flex-start',
-                        fontWeight: 'bold',
-                        color: dateColor,
-                        backgroundColor: isToday && isCurrentMonth ? '#3f6cbe' : 'transparent',
-                        borderRadius: 12,
-                        paddingHorizontal: 3,
-                        paddingTop: 1,
-                      }}
-                    />
-                    {dayMemos.length > 2 + (fontSizeIndex < 1 ? 1 : 0) && (
-                      <TextWidget 
-                        text={`+${dayMemos.length - 2 - (fontSizeIndex < 1 ? 1 : 0)}`} 
-                        style={{ fontSize: 9, color: isCurrentMonth ? '#8A8A8A' : `#8A8A8A${alpha}`, textAlign: 'center' }} 
-                      />
-                    )}
-                  </FlexWidget>
-
-                  {/* 기념일 및 공휴일 - 항상 날짜 바로 아래 배치 */}
-                  {displayName && (
-                    <TextWidget 
-                      text={displayName} 
-                      style={{ fontSize: 6, color: textNameColor, textAlign: 'left', width: 'match_parent'}} 
-                      maxLines={1} 
-                    />
-                  )}
-
-                  {/* 일정 메모 - 설정에 따라 정렬 */}
-                  <FlexWidget style={{ 
-                    flex: 1,
-                    width: 'match_parent', 
-                    flexDirection: 'column',
-                    justifyContent: alignment === 'center' ? 'center' : 'flex-start'
-                  }}>
-                    {dayMemos.slice(0, 2+(fontSizeIndex < 1 ? 1 : 0)).map((memo) => {
-                      const memoBg = memo.color || '#C8F0C4';
-                      const isBgColorHex = memoBg.startsWith('#');
-                      const finalMemoBg = (isCurrentMonth || !isBgColorHex) ? memoBg : `${memoBg}${alpha}`;
-                      const memoTextColor = isCurrentMonth ? '#000000' : `#000000${alpha}`;
-                      return (
-                        <FlexWidget 
-                          key={memo.id} 
-                          style={{ 
-                            backgroundColor: finalMemoBg, 
-                            paddingHorizontal: 1, 
-                            marginBottom: 0.5,
-                            borderRadius: 1,
-                            width: 'match_parent'
+                  {showDateContent && (
+                    <FlexWidget style={{ flex: 1, width: 'match_parent', flexDirection: 'column', opacity: isCurrentMonth ? 1 : 0.7 }}>
+                      <FlexWidget style={{ width: 'match_parent', justifyContent: 'space-between', flexDirection: 'row' }}>
+                        <TextWidget
+                          text={String(date.getDate())}
+                          style={{
+                            fontSize: 11,
+                            alignSelf: 'flex-start',
+                            fontWeight: 'bold',
+                            color: dateColor,
+                            backgroundColor: isToday && isCurrentMonth ? '#3f6cbe' : 'transparent',
+                            borderRadius: 12,
+                            paddingHorizontal: 3,
+                            paddingTop: 1,
                           }}
-                        >
+                        />
+                        {dayMemos.length > memoLimit && (
                           <TextWidget 
-                            text={memo.title} 
-                            style={{ fontSize: 9 * scale, color: memoTextColor, fontWeight: 'bold' }} 
-                            maxLines={1} 
+                            text={`+${dayMemos.length - memoLimit}`} 
+                            style={{ fontSize: 9, color: isCurrentMonth ? '#8A8A8A' : `#8A8A8A${alpha}`, textAlign: 'center' }} 
                           />
-                        </FlexWidget>
-                      );
-                    })}
-                  </FlexWidget>
+                        )}
+                      </FlexWidget>
+
+                      {/* 기념일 및 공휴일 - 항상 날짜 바로 아래 배치 */}
+                      {displayName && (
+                        <TextWidget 
+                          text={displayName} 
+                          style={{ fontSize: 6, color: textNameColor, textAlign: 'left', width: 'match_parent'}} 
+                          maxLines={1} 
+                        />
+                      )}
+
+                      {/* 일정 메모 - 설정에 따라 정렬 */}
+                      <FlexWidget style={{ 
+                        flex: 1,
+                        width: 'match_parent', 
+                        flexDirection: 'column',
+                        justifyContent: alignment === 'center' ? 'center' : 'flex-start'
+                      }}>
+                        {dayMemos.slice(0, memoLimit).map((memo) => {
+                          const memoBg = memo.color || '#C8F0C4';
+                          const isBgColorHex = memoBg.startsWith('#');
+                          const finalMemoBg = (isCurrentMonth || !isBgColorHex) ? memoBg : `${memoBg}${alpha}`;
+                          const memoTextColor = isCurrentMonth ? '#000000' : `#000000${alpha}`;
+                          return (
+                            <FlexWidget 
+                              key={memo.id} 
+                              style={{ 
+                                backgroundColor: finalMemoBg, 
+                                paddingHorizontal: 1, 
+                                marginBottom: 0.5,
+                                borderRadius: 1,
+                                width: 'match_parent'
+                              }}
+                            >
+                              <TextWidget 
+                                text={memo.title} 
+                                style={{ fontSize: 9 * scale, color: memoTextColor, fontWeight: 'bold' }} 
+                                maxLines={1} 
+                              />
+                            </FlexWidget>
+                          );
+                        })}
+                      </FlexWidget>
+                    </FlexWidget>
+                  )}
                 </FlexWidget>
               );
             })}

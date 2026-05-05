@@ -54,6 +54,7 @@ export default function CalendarMemoApp() {
       fontSizeIndex: widgetSettings.fontSizeIndex,
       alignment: widgetSettings.alignment,
       showHolidays: widgetSettings.showHolidays,
+      showOtherMonths: widgetSettings.showOtherMonths,
       viewDate: widgetViewDateState,
       holidays
     });
@@ -120,8 +121,8 @@ export default function CalendarMemoApp() {
     }
   }, [changeMonth]);
 
-  const handleUpdateSettings = async (index: number, align: 'top' | 'center', showHolidays: boolean) => {
-    const newSettings = { fontSizeIndex: index, alignment: align, showHolidays };
+  const handleUpdateSettings = async (index: number, align: 'top' | 'center', showHolidays: boolean, showOtherMonths: boolean) => {
+    const newSettings = { fontSizeIndex: index, alignment: align, showHolidays, showOtherMonths };
     if (isSettingsFromWidget) {
       await updateWidgetSettings(newSettings);
       triggerWidgetUpdate({
@@ -265,6 +266,7 @@ export default function CalendarMemoApp() {
             fontSizeIndex={isSettingsFromWidget ? widgetSettings.fontSizeIndex : appSettings.fontSizeIndex}
             alignment={isSettingsFromWidget ? widgetSettings.alignment : appSettings.alignment}
             showHolidays={isSettingsFromWidget ? widgetSettings.showHolidays : appSettings.showHolidays}
+            showOtherMonths={isSettingsFromWidget ? widgetSettings.showOtherMonths : appSettings.showOtherMonths}
             onSave={handleUpdateSettings}
             isFromWidget={isSettingsFromWidget}
           />

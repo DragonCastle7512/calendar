@@ -12,6 +12,7 @@ interface WidgetUpdateData {
   fontSizeIndex: number;
   alignment: 'top' | 'center';
   showHolidays: boolean;
+  showOtherMonths: boolean;
   viewDate: Date;
   holidays: { [key: string]: string };
 }
@@ -22,7 +23,7 @@ export const triggerWidgetUpdate = async (data: WidgetUpdateData) => {
   InteractionManager.runAfterInteractions(() => {
     setTimeout(async () => {
       try {
-        const { memos, fontSizeIndex, alignment, showHolidays, viewDate, holidays } = data;
+        const { memos, fontSizeIndex, alignment, showHolidays, showOtherMonths, viewDate, holidays } = data;
         const year = viewDate.getFullYear();
         const month = viewDate.getMonth();
         const todayStr = getDateKey(new Date());
@@ -50,7 +51,7 @@ export const triggerWidgetUpdate = async (data: WidgetUpdateData) => {
 
         requestWidgetUpdate({
           widgetName: 'Memo',
-          renderWidget: () => (
+          renderWidget: (widgetInfo) => (
             <MemoWidget 
               year={year} 
               month={month} 
@@ -63,6 +64,8 @@ export const triggerWidgetUpdate = async (data: WidgetUpdateData) => {
               fontSizeIndex={fontSizeIndex}
               alignment={alignment}
               showHolidays={showHolidays}
+              showOtherMonths={showOtherMonths}
+              widgetHeight={widgetInfo.height}
             />
           ),
           widgetNotFound: () => {}

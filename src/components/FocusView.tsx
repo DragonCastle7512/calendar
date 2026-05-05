@@ -52,6 +52,7 @@ export const FocusView: React.FC<FocusViewProps> = ({
         fontSizeIndex={settings.fontSizeIndex}
         alignment={settings.alignment}
         showHolidays={settings.showHolidays}
+        showOtherMonths={settings.showOtherMonths}
       />
       
       <MemoSection 
@@ -73,6 +74,7 @@ export const FocusView: React.FC<FocusViewProps> = ({
           fontSizeIndex={settings.fontSizeIndex}
           alignment={settings.alignment}
           showHolidays={settings.showHolidays}
+          showOtherMonths={settings.showOtherMonths}
         />
       ) : (
         <View style={styles.emptyWeekRow} />

@@ -20,7 +20,8 @@ interface SettingsModalProps {
   fontSizeIndex: number;
   alignment: 'top' | 'center';
   showHolidays: boolean;
-  onSave: (fontSizeIndex: number, alignment: 'top' | 'center', showHolidays: boolean) => void;
+  showOtherMonths: boolean;
+  onSave: (fontSizeIndex: number, alignment: 'top' | 'center', showHolidays: boolean, showOtherMonths: boolean) => void;
   isFromWidget?: boolean;
 }
 
@@ -30,20 +31,23 @@ export const SettingsModal = ({
   fontSizeIndex: initialFontSize,
   alignment: initialAlignment,
   showHolidays: initialShowHolidays,
+  showOtherMonths: initialShowOtherMonths,
   onSave,
   isFromWidget = false,
 }: SettingsModalProps) => {
   const [localFontSize, setLocalFontSize] = useState(initialFontSize);
   const [localAlignment, setLocalAlignment] = useState(initialAlignment);
   const [localShowHolidays, setLocalShowHolidays] = useState(initialShowHolidays);
+  const [localShowOtherMonths, setLocalShowOtherMonths] = useState(initialShowOtherMonths);
 
   useEffect(() => {
     if (visible) {
       setLocalFontSize(initialFontSize);
       setLocalAlignment(initialAlignment);
       setLocalShowHolidays(initialShowHolidays);
+      setLocalShowOtherMonths(initialShowOtherMonths);
     }
-  }, [visible, initialFontSize, initialAlignment, initialShowHolidays]);
+  }, [visible, initialFontSize, initialAlignment, initialShowHolidays, initialShowOtherMonths]);
 
   const handleBack = () => {
     if (isFromWidget) {
@@ -54,7 +58,7 @@ export const SettingsModal = ({
   };
 
   const handleSave = () => {
-    onSave(localFontSize, localAlignment, localShowHolidays);
+    onSave(localFontSize, localAlignment, localShowHolidays, localShowOtherMonths);
   };
 
   const fontSizes = [
@@ -152,6 +156,30 @@ export const SettingsModal = ({
                     <Text style={[
                       styles.optionBtnText,
                       localShowHolidays === option.value && styles.optionBtnTextActive
+                    ]}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.settingsLabel}>이전/다음 달 표시</Text>
+              <View style={styles.optionRow}>
+                {[
+                  { label: '표시함', value: true },
+                  { label: '표시 안함', value: false },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.label}
+                    style={[
+                      styles.optionBtn,
+                      localShowOtherMonths === option.value && styles.optionBtnActive
+                    ]}
+                    onPress={() => setLocalShowOtherMonths(option.value)}
+                  >
+                    <Text style={[
+                      styles.optionBtnText,
+                      localShowOtherMonths === option.value && styles.optionBtnTextActive
                     ]}>
                       {option.label}
                     </Text>

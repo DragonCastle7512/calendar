@@ -53,6 +53,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
               fontSizeIndex={settings.fontSizeIndex}
               alignment={settings.alignment}
               showHolidays={settings.showHolidays}
+              showOtherMonths={settings.showOtherMonths}
             />
           ))}
         </View>

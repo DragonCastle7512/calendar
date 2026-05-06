@@ -53,6 +53,12 @@ export const WeekRow = ({
   const scales = [0.85, 1, 1.15];
   const scale = scales[fontSizeIndex] || 1;
 
+  // --- 높이 기반 동적 메모 개수 계산 (MemoWidget.tsx와 동일한 로직 기준 수정) ---
+  const DATE_INFO_HEIGHT = 20;
+  const MEMO_BAR_HEIGHT = 17 * scale;
+  const rowHeight = isFocusView ? 75 : NORMAL_ROW_HEIGHT;
+  const sliceSize = Math.max(1, Math.floor((rowHeight - DATE_INFO_HEIGHT) / MEMO_BAR_HEIGHT));
+
   return (
     <View 
       style={[
@@ -78,7 +84,12 @@ export const WeekRow = ({
         
         const isSunday = di === 0;
         const isRedDay = !!holidayName || !!lunarHolidayName || !!offlineHolidayName;
-        const sliceSize = (isFocusView ? 2 : 3) -(!isRedDay && anniversaryName ? 1 : 0) + (fontSizeIndex <= 1 ? 1 : 0);
+        
+        // --- 높이 기반 동적 메모 개수 계산 ---
+        let daySliceSize = sliceSize;
+        if (showHolidays && combinedName) {
+          daySliceSize = Math.max(1, sliceSize - 1);
+        }
 
         const showDateContent = isCurrentMonth || showOtherMonths;
 
@@ -97,7 +108,7 @@ export const WeekRow = ({
             disabled={!showDateContent}
           >
             {showDateContent && (
-              <View style={{ flex: 1, opacity: isCurrentMonth ? 1 : 0.35 }}>
+              <View style={{ flex: 1, position: 'relative', alignItems: 'center', opacity: isCurrentMonth ? 1 : 0.35 }}>
                 <View style={styles.topArea}>
                   <View style={[styles.dateNumWrap, isToday && styles.todayBadge]}>
                     <Text style={[
@@ -111,11 +122,10 @@ export const WeekRow = ({
                       {date.getDate()}
                     </Text>
                   </View>
-
-                  {dayMemos.length > sliceSize && (
-                    <Text style={[styles.moreBadge, { fontSize: 9 }]}>+{dayMemos.length - sliceSize}</Text>
-                  )}
                 </View>
+                {dayMemos.length > daySliceSize && (
+                  <Text style={[styles.moreBadge]}>+{dayMemos.length - daySliceSize}</Text>
+                )}
 
                 {combinedName && (
                   <Text style={[
@@ -131,7 +141,7 @@ export const WeekRow = ({
                   styles.memoPreviewArea, 
                   { flex: 1, justifyContent: alignment === 'center' ? 'center' : 'flex-start' }
                 ]}>
-                  {dayMemos.slice(0, sliceSize).map((m) => (
+                  {dayMemos.slice(0, daySliceSize).map((m) => (
                     <View key={m.id} style={[styles.memoChip, { backgroundColor: m.color || '#C8F0C4' }]}>
                       <Text style={[styles.memoChipText, { fontSize: 9 * scale }]} numberOfLines={1}>{m.title}</Text>
                     </View>
@@ -155,8 +165,9 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     width: CELL_WIDTH,
+    position: 'relative',
     flex: 1,
-    paddingTop: 6,
+    paddingTop: 1,
     paddingHorizontal: 4,
     backgroundColor: '#FFFFFF',
     flexDirection: 'column',
@@ -202,6 +213,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   memoPreviewArea: {
+    width: '100%',
     marginTop: 2,
     gap: 2,
   },
@@ -218,9 +230,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   moreBadge: {
-    fontSize: 9,
+    fontSize: 7,
+    right: 0,
+    top: 0,
+    position: 'absolute',
     color: '#8A8A8A',
     fontWeight: '600',
-    marginRight: 2,
   },
 });

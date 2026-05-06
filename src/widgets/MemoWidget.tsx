@@ -1,7 +1,7 @@
 "use no memo";
 
 import React from 'react';
-import { FlexWidget, SvgWidget, TextWidget } from 'react-native-android-widget';
+import { FlexWidget, OverlapWidget, SvgWidget, TextWidget } from 'react-native-android-widget';
 
 import { MemosState } from '../types/calendar';
 
@@ -49,11 +49,11 @@ export function MemoWidget({
   const WEEKDAYS_HEIGHT = 22;
   const GRID_ROWS = 6;
   const DATE_INFO_HEIGHT = 18;
-  const MEMO_BAR_HEIGHT = 15 * scale;
+  const MEMO_BAR_HEIGHT = 16 * scale;
 
   const cellHeight = (widgetHeight - HEADER_HEIGHT - WEEKDAYS_HEIGHT) / GRID_ROWS;
   const availableHeight = cellHeight - DATE_INFO_HEIGHT;
-  const memoLimit = Math.max(1, Math.floor(availableHeight / MEMO_BAR_HEIGHT));
+  const dayMemoLimit = Math.max(1, Math.floor(availableHeight / MEMO_BAR_HEIGHT));
 
   return (
     <FlexWidget
@@ -167,38 +167,46 @@ export function MemoWidget({
                     paddingTop: 1,
                     paddingHorizontal: 1,
                     flexDirection: 'column',
-                    justifyContent: 'flex-start'
+                    justifyContent: 'flex-start',
                   }}
                 >
                   {showDateContent && (
                     <FlexWidget style={{ flex: 1, width: 'match_parent', flexDirection: 'column', opacity: isCurrentMonth ? 1 : 0.7 }}>
-                      <FlexWidget style={{ width: 'match_parent', justifyContent: 'space-between', flexDirection: 'row' }}>
-                        <TextWidget
-                          text={String(date.getDate())}
-                          style={{
-                            fontSize: 11,
-                            alignSelf: 'flex-start',
-                            fontWeight: 'bold',
-                            color: dateColor,
-                            backgroundColor: isToday && isCurrentMonth ? '#3f6cbe' : 'transparent',
-                            borderRadius: 12,
-                            paddingHorizontal: 3,
-                            paddingTop: 1,
-                          }}
-                        />
-                        {dayMemos.length > memoLimit && (
-                          <TextWidget 
-                            text={`+${dayMemos.length - memoLimit}`} 
-                            style={{ fontSize: 9, color: isCurrentMonth ? '#8A8A8A' : `#8A8A8A${alpha}`, textAlign: 'center' }} 
+                      <OverlapWidget style={{ width: 'match_parent' }}>
+                        {/* 1. 중앙 날짜 레이어 */}
+                        <FlexWidget style={{ width: 'match_parent', justifyContent: 'center', flexDirection: 'row' }}>
+                          <TextWidget
+                            text={String(date.getDate())}
+                            style={{
+                              fontSize: 11,
+                              fontWeight: '700',
+                              minWidth: 24,
+                              color: dateColor,
+                              backgroundColor: isToday && isCurrentMonth ? '#3f6cbe' : 'transparent',
+                              borderRadius: 12,
+                              paddingHorizontal: 5,
+                              paddingTop: 1,
+                              textAlign: 'center'
+                            }}
                           />
-                        )}
-                      </FlexWidget>
+                        </FlexWidget>
+
+                        {/* 2. 우측 상단 배지 레이어 (독립된 레이어로 날짜 위치에 영향을 주지 않음) */}
+                        <FlexWidget style={{ width: 'match_parent', justifyContent: 'flex-end', flexDirection: 'row' }}>
+                          {dayMemos.length > dayMemoLimit && (
+                            <TextWidget 
+                              text={`+${dayMemos.length - dayMemoLimit}`} 
+                              style={{ fontSize: 9, color: isCurrentMonth ? '#8A8A8A' : `#8A8A8A${alpha}`, textAlign: 'right' }} 
+                            />
+                          )}
+                        </FlexWidget>
+                      </OverlapWidget>
 
                       {/* 기념일 및 공휴일 - 항상 날짜 바로 아래 배치 */}
                       {displayName && (
                         <TextWidget 
                           text={displayName} 
-                          style={{ fontSize: 6, color: textNameColor, textAlign: 'left', width: 'match_parent'}} 
+                          style={{ fontSize: 6, color: textNameColor, textAlign: 'center', width: 'match_parent'}} 
                           maxLines={1} 
                         />
                       )}
@@ -210,7 +218,7 @@ export function MemoWidget({
                         flexDirection: 'column',
                         justifyContent: alignment === 'center' ? 'center' : 'flex-start'
                       }}>
-                        {dayMemos.slice(0, memoLimit).map((memo) => {
+                        {dayMemos.slice(0, dayMemoLimit).map((memo) => {
                           const memoBg = memo.color || '#C8F0C4';
                           const isBgColorHex = memoBg.startsWith('#');
                           const finalMemoBg = (isCurrentMonth || !isBgColorHex) ? memoBg : `${memoBg}${alpha}`;
@@ -228,7 +236,7 @@ export function MemoWidget({
                             >
                               <TextWidget 
                                 text={memo.title} 
-                                style={{ fontSize: 9 * scale, color: memoTextColor, fontWeight: 'bold' }} 
+                                style={{ fontSize: 9 * scale, color: memoTextColor, fontWeight: '500' }} 
                                 maxLines={1} 
                               />
                             </FlexWidget>

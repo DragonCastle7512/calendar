@@ -50,6 +50,8 @@ interface WidgetModalProps {
   onSave: () => void;
   onCancel: () => void;
   editingId: string | null;
+  moveTargetDate: string | null;
+  setMoveTargetDate: (v: string | null) => void;
 }
 
 export const WidgetModal = ({
@@ -77,7 +79,9 @@ export const WidgetModal = ({
   setRepeat,
   onSave,
   onCancel,
-  editingId
+  editingId,
+  moveTargetDate,
+  setMoveTargetDate
 }: WidgetModalProps) => {
   const scrollRef = useRef<ScrollView>(null);
   const targetDate = new Date(dateStr);
@@ -220,6 +224,9 @@ export const WidgetModal = ({
                 onCancel={onCancel}
                 onSave={onSave}
                 editingId={editingId}
+                currentDate={moveTargetDate || dateStr}
+                onDateChange={setMoveTargetDate}
+                holidays={holidays}
               />
             )}
 

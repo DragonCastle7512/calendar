@@ -44,6 +44,7 @@ export default function CalendarMemoApp() {
   const [selectedColor, setSelectedColor] = useState(MEMO_COLORS[0]);
   const [repeat, setRepeat] = useState<RepeatType>('none');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [moveTargetDate, setMoveTargetDate] = useState<string | null>(null);
 
   const { appSettings, widgetSettings, loadSettings, updateAppSettings, updateWidgetSettings } = useSettings();
   const { holidays, syncHolidays } = useHolidays();
@@ -60,7 +61,7 @@ export default function CalendarMemoApp() {
     });
   }, [widgetSettings, widgetViewDateState, holidays]);
 
-  const { memos, loadMemos, saveMemo, deleteMemo, updateMemoColor, reorderMemos } = useMemos(handleWidgetUpdate);
+  const { memos, loadMemos, saveMemo, deleteMemo, moveMemo, updateMemoColor, reorderMemos } = useMemos(handleWidgetUpdate);
 
   useCalendarNavigation(
     { settingsVisible, isSettingsFromWidget, widgetSelectedDate, modalVisible, selectedDate },
@@ -136,17 +137,20 @@ export default function CalendarMemoApp() {
   };
 
   const openAddModal = () => {
-    setEditingId(null); setNewTitle(''); setNewContent(''); setSelectedColor(MEMO_COLORS[0]); setRepeat('none'); setModalVisible(true);
+    setEditingId(null); setNewTitle(''); setNewContent(''); setSelectedColor(MEMO_COLORS[0]); setRepeat('none'); setMoveTargetDate(null); setModalVisible(true);
   };
   const openEditModal = (item: MemoEntry) => {
-    setEditingId(item.id); setNewTitle(item.title); setNewContent(item.content); setSelectedColor(item.color); setRepeat(item.repeat || 'none'); setModalVisible(true);
+    setEditingId(item.id); setNewTitle(item.title); setNewContent(item.content); setSelectedColor(item.color); setRepeat(item.repeat || 'none'); setMoveTargetDate(null); setModalVisible(true);
   };
 
-  const handleSaveMemo = () => {
-    const target = widgetSelectedDate || selectedDate;
-    if (target) {
-      saveMemo(target, editingId, { title: newTitle, content: newContent, color: selectedColor, repeat });
+  const handleSaveMemo = async () => {
+    const originalTarget = widgetSelectedDate || selectedDate;
+    const finalTarget = moveTargetDate || originalTarget;
+    
+    if (finalTarget && originalTarget) {
+      await saveMemo(finalTarget, editingId, { title: newTitle, content: newContent, color: selectedColor, repeat }, originalTarget);
       setModalVisible(false);
+      setMoveTargetDate(null);
     }
   };
 
@@ -205,9 +209,18 @@ export default function CalendarMemoApp() {
                 },
                 memoSectionProps: {
                   data: { selectedDate, selectedMemos, holidays },
-                  form: { visible: modalVisible, title: newTitle, content: newContent, color: selectedColor, repeat, editingId },
+                  form: { 
+                    visible: modalVisible, 
+                    title: newTitle, 
+                    content: newContent, 
+                    color: selectedColor, 
+                    repeat, 
+                    editingId,
+                    currentDate: moveTargetDate || selectedDate
+                  },
                   actions: {
                     setModalVisible, setNewTitle, setNewContent, setRepeat,
+                    setMoveTargetDate,
                     openAddModal, openEditModal, saveMemo: handleSaveMemo, 
                     deleteMemo: (id: string) => deleteMemo(selectedDate, id), 
                     reorderMemos: (f: number, t: number) => reorderMemos(selectedDate, f, t), 
@@ -256,6 +269,8 @@ export default function CalendarMemoApp() {
             onSave={handleSaveMemo}
             onCancel={() => setModalVisible(false)}
             editingId={editingId}
+            moveTargetDate={moveTargetDate}
+            setMoveTargetDate={setMoveTargetDate}
           />
         )}
         

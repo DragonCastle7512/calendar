@@ -21,6 +21,9 @@ interface MemoFormProps {
   onCancel: () => void;
   onSave: () => void;
   editingId: string | null;
+  currentDate?: string;
+  onDateChange?: (date: string) => void;
+  holidays?: { [date: string]: string };
 }
 
 
@@ -34,10 +37,14 @@ export const MemoForm = ({
   setRepeat,
   onCancel,
   onSave,
-  editingId
+  editingId,
+  currentDate,
+  onDateChange,
+  holidays
 }: MemoFormProps) => {
   const anim = useRef(new Animated.Value(0)).current;
   const [showRepeatModal, setShowRepeatModal] = useState(false);
+  const [showDateModal, setShowDateModal] = useState(false);
 
   useEffect(() => {
     Animated.timing(anim, {
@@ -84,6 +91,12 @@ export const MemoForm = ({
     }
   };
 
+  const formatDateLabel = (dateStr?: string) => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    return `${parseInt(m)}월 ${parseInt(d)}일`;
+  };
+
   return (
     <Animated.View style={[styles.inlineForm, animatedStyle, { borderLeftColor: color, borderLeftWidth: 4 }]}>
       <View style={styles.topRow}>
@@ -95,12 +108,20 @@ export const MemoForm = ({
           onChangeText={setNewTitle}
           autoFocus
         />
-        <TouchableOpacity style={styles.repeatBtn} onPress={() => setShowRepeatModal(true)}>
-          <Ionicons name="repeat" size={18} color={repeat !== 'none' ? '#3f6cbe' : '#8A8A8A'} />
-          <Text style={[styles.repeatBtnText, repeat !== 'none' && { color: '#3f6cbe', fontWeight: '700' }]}>
-            {getRepeatLabel()}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.topActions}>
+          {onDateChange && (
+            <TouchableOpacity style={styles.repeatBtn} onPress={() => setShowDateModal(true)}>
+              <Ionicons name="calendar-outline" size={18} color="#8A8A8A" />
+              <Text style={styles.repeatBtnText}>{formatDateLabel(currentDate)}</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.repeatBtn} onPress={() => setShowRepeatModal(true)}>
+            <Ionicons name="repeat" size={18} color={repeat !== 'none' ? '#3f6cbe' : '#8A8A8A'} />
+            <Text style={[styles.repeatBtnText, repeat !== 'none' && { color: '#3f6cbe', fontWeight: '700' }]}>
+              {getRepeatLabel()}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <TextInput
         style={styles.inlineBodyInput}
@@ -131,6 +152,15 @@ export const MemoForm = ({
         onSelect={setRepeat}
         onClose={() => setShowRepeatModal(false)}
       />
+
+      <SelectionModal
+        visible={showDateModal}
+        type="date"
+        selectedValue={currentDate || ''}
+        onSelect={(date) => onDateChange?.(date)}
+        onClose={() => setShowDateModal(false)}
+        holidays={holidays}
+      />
     </Animated.View>
   );
 };
@@ -148,6 +178,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
+  },
+  topActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   inlineTitleInput: {
     flex: 1,

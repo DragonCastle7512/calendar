@@ -20,12 +20,14 @@ interface MemoSectionProps {
     color: string;
     repeat: RepeatType;
     editingId: string | null;
+    currentDate: string;
   };
   actions: {
     setModalVisible: (v: boolean) => void;
     setNewTitle: (v: string) => void;
     setNewContent: (v: string) => void;
     setRepeat: (v: RepeatType) => void;
+    setMoveTargetDate: (v: string | null) => void;
     openAddModal: () => void;
     openEditModal: (item: MemoEntry) => void;
     saveMemo: () => void;
@@ -43,9 +45,9 @@ export const MemoSection: React.FC<MemoSectionProps> = ({
   itemHeights
 }) => {
   const { selectedDate, selectedMemos, holidays } = data;
-  const { visible, title, content, color, repeat, editingId } = form;
+  const { visible, title, content, color, repeat, editingId, currentDate } = form;
   const { 
-    setModalVisible, setNewTitle, setNewContent, setRepeat,
+    setModalVisible, setNewTitle, setNewContent, setRepeat, setMoveTargetDate,
     openAddModal, openEditModal, saveMemo, deleteMemo, reorderMemos, updateMemoColor 
   } = actions;
 
@@ -89,6 +91,9 @@ export const MemoSection: React.FC<MemoSectionProps> = ({
           onCancel={() => setModalVisible(false)} 
           onSave={saveMemo} 
           editingId={editingId} 
+          currentDate={currentDate}
+          onDateChange={setMoveTargetDate}
+          holidays={holidays}
         />
       )}
 

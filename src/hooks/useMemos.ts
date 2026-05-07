@@ -48,12 +48,22 @@ export const useMemos = (onUpdate?: (latestMemos: MemosState) => void) => {
   const saveMemo = useCallback(async (
     target: string, 
     editingId: string | null, 
-    memoData: { title: string; content: string; color: string; repeat: RepeatType }
+    memoData: { title: string; content: string; color: string; repeat: RepeatType },
+    sourceDate?: string
   ) => {
     const { title, content, color, repeat } = memoData;
     if (!title.trim() || !target) return;
     const updated = { ...memos };
     
+    if (editingId && sourceDate && sourceDate !== target && updated[sourceDate]) {
+      const memoToMove = updated[sourceDate].find(m => m.id === editingId);
+      if (memoToMove) {
+        updated[sourceDate] = updated[sourceDate].filter(m => m.id !== editingId);
+        if (updated[sourceDate].length === 0) delete updated[sourceDate];
+        updated[target] = [...(updated[target] || []), memoToMove];
+      }
+    }
+
     if (editingId) {
       const currentMemo = updated[target]?.find(m => m.id === editingId);
       const oldRepeat = currentMemo?.repeat || 'none';
@@ -163,11 +173,33 @@ export const useMemos = (onUpdate?: (latestMemos: MemosState) => void) => {
     await saveMemosToStorage(updated);
   }, [memos, saveMemosToStorage]);
 
+  const moveMemo = useCallback(async (
+    sourceDate: string,
+    targetDate: string,
+    id: string
+  ) => {
+    if (!sourceDate || !targetDate || sourceDate === targetDate) return;
+    
+    const updated = { ...memos };
+    const memoToMove = updated[sourceDate]?.find(m => m.id === id);
+    if (!memoToMove) return;
+
+    // Remove from source
+    updated[sourceDate] = updated[sourceDate].filter(m => m.id !== id);
+    if (updated[sourceDate].length === 0) delete updated[sourceDate];
+
+    // Add to target
+    updated[targetDate] = [...(updated[targetDate] || []), memoToMove];
+
+    await saveMemosToStorage(updated);
+  }, [memos, saveMemosToStorage]);
+
   return {
     memos,
     loadMemos,
     saveMemo,
     deleteMemo,
+    moveMemo,
     updateMemoColor,
     reorderMemos,
     setMemos,

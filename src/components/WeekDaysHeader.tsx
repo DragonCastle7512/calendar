@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
     height: WEEKDAY_HEIGHT, 
     flexDirection: 'row', 
     borderBottomWidth: 1, 
-    borderBottomColor: '#b3b3b3', 
+    borderBottomColor: '#dfdfdf', 
     backgroundColor: '#FFFFFF' 
   },
   weekDayCell: { 

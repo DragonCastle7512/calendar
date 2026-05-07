@@ -98,6 +98,7 @@ export const WeekRow = ({
             key={di}
             style={[
               styles.dayCell,
+              di < 6 && styles.dayBorderRight,
               !isFocusView && wi < CALENDAR_ROWS - 1 && styles.dayBorderBottom,
               isSelected && styles.selectedDayCell,
               isFocusView && { paddingTop: 6 },
@@ -171,6 +172,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     flexDirection: 'column',
   },
+  dayBorderRight: {
+    borderRightWidth: 1,
+    borderRightColor: '#dfdfdf',
+  },
   topArea: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -178,7 +183,7 @@ const styles = StyleSheet.create({
   },
   dayBorderBottom: {
     borderBottomWidth: 1,
-    borderBottomColor: '#b3b3b3',
+    borderBottomColor: '#dfdfdf',
   },
   selectedDayCell: {
     backgroundColor: '#F5F5F5',

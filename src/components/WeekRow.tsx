@@ -98,7 +98,6 @@ export const WeekRow = ({
             key={di}
             style={[
               styles.dayCell,
-              di < 6 && styles.dayBorderRight,
               !isFocusView && wi < CALENDAR_ROWS - 1 && styles.dayBorderBottom,
               isSelected && styles.selectedDayCell,
               isFocusView && { paddingTop: 6 },
@@ -177,13 +176,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  dayBorderRight: {
-    borderRightWidth: 1,
-    borderRightColor: '#F0F0F0',
-  },
   dayBorderBottom: {
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: '#b3b3b3',
   },
   selectedDayCell: {
     backgroundColor: '#F5F5F5',
@@ -226,7 +221,7 @@ const styles = StyleSheet.create({
   memoChipText: {
     fontSize: 9,
     color: '#000000',
-    fontWeight: '700',
+    fontWeight: '500',
     letterSpacing: 0.2,
   },
   moreBadge: {

@@ -71,7 +71,7 @@ export function MemoWidget({
         justifyContent: 'space-between',
         paddingVertical: 8,
         borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0'
+        borderBottomColor: '#b3b3b3'
       }}>
         <FlexWidget clickAction="OPEN_SETTINGS_APP" style={{ marginLeft: 10, padding: 6, borderRadius: 20 }}>
           <SvgWidget
@@ -99,7 +99,7 @@ export function MemoWidget({
         width: 'match_parent',
         backgroundColor: '#ffffff', 
         borderBottomWidth: 1, 
-        borderBottomColor: '#F0F0F0' 
+        borderBottomColor: '#b3b3b3' 
       }}>
         {weekDays.map((d, i) => (
           <FlexWidget key={i} style={{ flex: 1, width: 0, alignItems: 'center', paddingVertical: 4 }}>
@@ -119,7 +119,7 @@ export function MemoWidget({
             width: 'match_parent',
             height: 'match_parent',
             borderBottomWidth: wi < 5 ? 1 : 0,
-            borderBottomColor: '#F0F0F0'
+            borderBottomColor: '#b3b3b3'
           }}>
             {week.map((date, di) => {
               const y = date.getFullYear();
@@ -162,8 +162,6 @@ export function MemoWidget({
                     width: 'match_parent',
                     height: 'match_parent',
                     backgroundColor: '#ffffff',
-                    borderRightWidth: di < 6 ? 1 : 0,
-                    borderRightColor: '#F0F0F0',
                     paddingTop: 1,
                     paddingHorizontal: 1,
                     flexDirection: 'column',

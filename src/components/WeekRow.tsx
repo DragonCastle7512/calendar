@@ -12,6 +12,7 @@ import {
   NORMAL_ROW_HEIGHT,
   OFFLINE_HOLIDAYS
 } from '../constants/calendar';
+import { AppSettings } from '../hooks/useSettings';
 import { MemosState } from '../types/calendar';
 import { getDateKey } from '../utils/date';
 import { getLunarHoliday } from '../utils/holiday';
@@ -26,11 +27,7 @@ interface WeekRowProps {
   holidays: { [date: string]: string };
   isFocusView?: boolean;
   onDatePress: (date: Date) => void;
-  fontSizeIndex?: number;
-  alignmentVertical?: 'top' | 'center';
-  alignmentHorizontal?: 'left' | 'center';
-  showHolidays?: boolean;
-  showOtherMonths?: boolean;
+  settings: AppSettings;
 }
 
 export const WeekRow = ({
@@ -43,13 +40,11 @@ export const WeekRow = ({
   holidays,
   isFocusView = false,
   onDatePress,
-  fontSizeIndex = 1,
-  alignmentVertical = 'top',
-  alignmentHorizontal = 'left',
-  showHolidays = true,
-  showOtherMonths = true,
+  settings,
 }: WeekRowProps) => {
   if (!week) return null;
+
+  const { fontSizeIndex, alignmentVertical, alignmentHorizontal, showHolidays, showOtherMonths } = settings;
 
   // Font size scaling
   const scales = [0.85, 1, 1.15];

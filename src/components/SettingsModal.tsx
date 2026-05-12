@@ -11,53 +11,36 @@ import {
   View
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AppSettings } from '../hooks/useSettings';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface SettingsModalProps {
   visible: boolean;
   onClose: () => void;
-  fontSizeIndex: number;
-  alignmentVertical: 'top' | 'center';
-  alignmentHorizontal: 'left' | 'center';
-  showHolidays: boolean;
-  showOtherMonths: boolean;
-  onSave: (
-    fontSizeIndex: number,
-    alignmentVertical: 'top' | 'center',
-    alignmentHorizontal: 'left' | 'center',
-    showHolidays: boolean,
-    showOtherMonths: boolean
-  ) => void;
+  settings: AppSettings;
+  onSave: (newSettings: AppSettings) => void;
   isFromWidget?: boolean;
 }
 
 export const SettingsModal = ({
   visible,
   onClose,
-  fontSizeIndex: initialFontSize,
-  alignmentVertical: initialAlignmentV,
-  alignmentHorizontal: initialAlignmentH,
-  showHolidays: initialShowHolidays,
-  showOtherMonths: initialShowOtherMonths,
+  settings: initialSettings,
   onSave,
   isFromWidget = false,
 }: SettingsModalProps) => {
-  const [localFontSize, setLocalFontSize] = useState(initialFontSize);
-  const [localAlignmentV, setLocalAlignmentV] = useState(initialAlignmentV);
-  const [localAlignmentH, setLocalAlignmentH] = useState(initialAlignmentH);
-  const [localShowHolidays, setLocalShowHolidays] = useState(initialShowHolidays);
-  const [localShowOtherMonths, setLocalShowOtherMonths] = useState(initialShowOtherMonths);
+  const [localSettings, setLocalSettings] = useState<AppSettings>(initialSettings);
 
   useEffect(() => {
     if (visible) {
-      setLocalFontSize(initialFontSize);
-      setLocalAlignmentV(initialAlignmentV);
-      setLocalAlignmentH(initialAlignmentH);
-      setLocalShowHolidays(initialShowHolidays);
-      setLocalShowOtherMonths(initialShowOtherMonths);
+      setLocalSettings(initialSettings);
     }
-  }, [visible, initialFontSize, initialAlignmentV, initialAlignmentH, initialShowHolidays, initialShowOtherMonths]);
+  }, [visible, initialSettings]);
+
+  const updateLocalSetting = (update: Partial<AppSettings>) => {
+    setLocalSettings(prev => ({ ...prev, ...update }));
+  };
 
   const handleBack = () => {
     if (isFromWidget) {
@@ -68,7 +51,7 @@ export const SettingsModal = ({
   };
 
   const handleSave = () => {
-    onSave(localFontSize, localAlignmentV, localAlignmentH, localShowHolidays, localShowOtherMonths);
+    onSave(localSettings);
   };
 
   const fontSizes = [
@@ -119,13 +102,13 @@ export const SettingsModal = ({
                     key={size.index}
                     style={[
                       styles.optionBtn,
-                      localFontSize === size.index && styles.optionBtnActive
+                      localSettings.fontSizeIndex === size.index && styles.optionBtnActive
                     ]}
-                    onPress={() => setLocalFontSize(size.index)}
+                    onPress={() => updateLocalSetting({ fontSizeIndex: size.index })}
                   >
                     <Text style={[
                       styles.optionBtnText,
-                      localFontSize === size.index && styles.optionBtnTextActive
+                      localSettings.fontSizeIndex === size.index && styles.optionBtnTextActive
                     ]}>
                       {size.label}
                     </Text>
@@ -142,13 +125,13 @@ export const SettingsModal = ({
                         key={align.value}
                         style={[
                           styles.optionBtn,
-                          localAlignmentV === align.value && styles.optionBtnActive
+                          localSettings.alignmentVertical === align.value && styles.optionBtnActive
                         ]}
-                        onPress={() => setLocalAlignmentV(align.value)}
+                        onPress={() => updateLocalSetting({ alignmentVertical: align.value })}
                       >
                         <Text style={[
                           styles.optionBtnText,
-                          localAlignmentV === align.value && styles.optionBtnTextActive
+                          localSettings.alignmentVertical === align.value && styles.optionBtnTextActive
                         ]}>
                           {align.label}
                         </Text>
@@ -164,13 +147,13 @@ export const SettingsModal = ({
                         key={align.value}
                         style={[
                           styles.optionBtn,
-                          localAlignmentH === align.value && styles.optionBtnActive
+                          localSettings.alignmentHorizontal === align.value && styles.optionBtnActive
                         ]}
-                        onPress={() => setLocalAlignmentH(align.value)}
+                        onPress={() => updateLocalSetting({ alignmentHorizontal: align.value })}
                       >
                         <Text style={[
                           styles.optionBtnText,
-                          localAlignmentH === align.value && styles.optionBtnTextActive
+                          localSettings.alignmentHorizontal === align.value && styles.optionBtnTextActive
                         ]}>
                           {align.label}
                         </Text>
@@ -190,13 +173,13 @@ export const SettingsModal = ({
                     key={option.label}
                     style={[
                       styles.optionBtn,
-                      localShowHolidays === option.value && styles.optionBtnActive
+                      localSettings.showHolidays === option.value && styles.optionBtnActive
                     ]}
-                    onPress={() => setLocalShowHolidays(option.value)}
+                    onPress={() => updateLocalSetting({ showHolidays: option.value })}
                   >
                     <Text style={[
                       styles.optionBtnText,
-                      localShowHolidays === option.value && styles.optionBtnTextActive
+                      localSettings.showHolidays === option.value && styles.optionBtnTextActive
                     ]}>
                       {option.label}
                     </Text>
@@ -214,13 +197,13 @@ export const SettingsModal = ({
                     key={option.label}
                     style={[
                       styles.optionBtn,
-                      localShowOtherMonths === option.value && styles.optionBtnActive
+                      localSettings.showOtherMonths === option.value && styles.optionBtnActive
                     ]}
-                    onPress={() => setLocalShowOtherMonths(option.value)}
+                    onPress={() => updateLocalSetting({ showOtherMonths: option.value })}
                   >
                     <Text style={[
                       styles.optionBtnText,
-                      localShowOtherMonths === option.value && styles.optionBtnTextActive
+                      localSettings.showOtherMonths === option.value && styles.optionBtnTextActive
                     ]}>
                       {option.label}
                     </Text>

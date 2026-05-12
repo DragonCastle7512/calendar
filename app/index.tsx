@@ -52,11 +52,7 @@ export default function CalendarMemoApp() {
   const handleWidgetUpdate = useCallback((latestMemos: any) => {
     triggerWidgetUpdate({
       memos: latestMemos,
-      fontSizeIndex: widgetSettings.fontSizeIndex,
-      alignmentVertical: widgetSettings.alignmentVertical,
-      alignmentHorizontal: widgetSettings.alignmentHorizontal,
-      showHolidays: widgetSettings.showHolidays,
-      showOtherMonths: widgetSettings.showOtherMonths,
+      settings: widgetSettings,
       viewDate: widgetViewDateState,
       holidays
     });
@@ -123,24 +119,14 @@ export default function CalendarMemoApp() {
     }
   }, [changeMonth]);
 
-  const handleUpdateSettings = async (
-    index: number, 
-    alignV: 'top' | 'center', 
-    alignH: 'left' | 'center', 
-    showHolidays: boolean, 
-    showOtherMonths: boolean
-  ) => {
-    const newSettings = { 
-      fontSizeIndex: index, 
-      alignmentVertical: alignV, 
-      alignmentHorizontal: alignH, 
-      showHolidays, 
-      showOtherMonths 
-    };
+  const handleUpdateSettings = async (newSettings: AppSettings) => {
     if (isSettingsFromWidget) {
       await updateWidgetSettings(newSettings);
       triggerWidgetUpdate({
-        memos, ...newSettings, viewDate: widgetViewDateState, holidays
+        memos, 
+        settings: newSettings, 
+        viewDate: widgetViewDateState, 
+        holidays
       });
       setTimeout(() => require('react-native').BackHandler.exitApp(), 200);
     } else {
@@ -291,11 +277,7 @@ export default function CalendarMemoApp() {
           <SettingsModal
             visible={settingsVisible}
             onClose={() => setSettingsVisible(false)}
-            fontSizeIndex={isSettingsFromWidget ? widgetSettings.fontSizeIndex : appSettings.fontSizeIndex}
-            alignmentVertical={isSettingsFromWidget ? widgetSettings.alignmentVertical : appSettings.alignmentVertical}
-            alignmentHorizontal={isSettingsFromWidget ? widgetSettings.alignmentHorizontal : appSettings.alignmentHorizontal}
-            showHolidays={isSettingsFromWidget ? widgetSettings.showHolidays : appSettings.showHolidays}
-            showOtherMonths={isSettingsFromWidget ? widgetSettings.showOtherMonths : appSettings.showOtherMonths}
+            settings={isSettingsFromWidget ? widgetSettings : appSettings}
             onSave={handleUpdateSettings}
             isFromWidget={isSettingsFromWidget}
           />

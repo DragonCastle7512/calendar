@@ -49,13 +49,9 @@ export const FocusView: React.FC<FocusViewProps> = ({
         holidays={holidays} 
         onDatePress={onDatePress} 
         isFocusView 
-        fontSizeIndex={settings.fontSizeIndex}
-        alignmentVertical={settings.alignmentVertical}
-        alignmentHorizontal={settings.alignmentHorizontal}
-        showHolidays={settings.showHolidays}
-        showOtherMonths={settings.showOtherMonths}
+        settings={settings}
       />
-      
+
       <MemoSection 
         {...memoSectionProps}
         itemHeights={itemHeights}
@@ -72,17 +68,14 @@ export const FocusView: React.FC<FocusViewProps> = ({
           holidays={holidays} 
           onDatePress={onDatePress} 
           isFocusView 
-          fontSizeIndex={settings.fontSizeIndex}
-          alignmentVertical={settings.alignmentVertical}
-          alignmentHorizontal={settings.alignmentHorizontal}
-          showHolidays={settings.showHolidays}
-          showOtherMonths={settings.showOtherMonths}
+          settings={settings}
         />
       ) : (
         <View style={styles.emptyWeekRow} />
       )}
     </Animated.View>
   );
+
 };
 
 const styles = StyleSheet.create({

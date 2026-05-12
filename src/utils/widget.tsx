@@ -7,13 +7,11 @@ import { getDateKey } from '../utils/date';
 import { getLunarHoliday } from '../utils/holiday';
 import { MemoWidget } from '../widgets/MemoWidget';
 
+import { AppSettings } from '../hooks/useSettings';
+
 interface WidgetUpdateData {
   memos: MemosState;
-  fontSizeIndex: number;
-  alignmentVertical: 'top' | 'center';
-  alignmentHorizontal: 'left' | 'center';
-  showHolidays: boolean;
-  showOtherMonths: boolean;
+  settings: AppSettings;
   viewDate: Date;
   holidays: { [key: string]: string };
 }
@@ -26,11 +24,7 @@ export const triggerWidgetUpdate = async (data: WidgetUpdateData) => {
       try {
         const { 
           memos, 
-          fontSizeIndex, 
-          alignmentVertical, 
-          alignmentHorizontal, 
-          showHolidays, 
-          showOtherMonths, 
+          settings,
           viewDate, 
           holidays 
         } = data;
@@ -44,7 +38,8 @@ export const triggerWidgetUpdate = async (data: WidgetUpdateData) => {
         const days: Date[] = [];
         for (let i = firstDay - 1; i >= 0; i--) days.push(new Date(year, month - 1, prevMonthLastDate - i));
         for (let i = 1; i <= lastDate; i++) days.push(new Date(year, month, i));
-        while (days.length < 42) days.push(new Date(year, month + 1, days.length - lastDate - firstDay + 1));
+        let nextDate = 1;
+        while (days.length < 42) days.push(new Date(year, month + 1, nextDate++));
         const rows: Date[][] = [];
         for (let i = 0; i < 42; i += 7) rows.push(days.slice(i, i + 7));
 
@@ -71,11 +66,7 @@ export const triggerWidgetUpdate = async (data: WidgetUpdateData) => {
               holidays={widgetHolidays} 
               anniversaries={widgetAnniversaries} 
               renderTime={Date.now()}
-              fontSizeIndex={fontSizeIndex}
-              alignmentVertical={alignmentVertical}
-              alignmentHorizontal={alignmentHorizontal}
-              showHolidays={showHolidays}
-              showOtherMonths={showOtherMonths}
+              settings={settings}
               widgetHeight={widgetInfo.height}
             />
           ),

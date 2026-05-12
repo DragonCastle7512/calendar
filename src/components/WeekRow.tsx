@@ -44,7 +44,7 @@ export const WeekRow = ({
 }: WeekRowProps) => {
   if (!week) return null;
 
-  const { fontSizeIndex, alignmentVertical, alignmentHorizontal, showHolidays, showOtherMonths } = settings;
+  const { fontSizeIndex, alignmentVertical, alignmentHorizontal, showHolidays, showOtherMonths, memoHighlightType } = settings;
 
   // Font size scaling
   const scales = [0.85, 1, 1.15];
@@ -139,6 +139,7 @@ export const WeekRow = ({
                   { 
                     flex: 1, 
                     justifyContent: alignmentVertical === 'center' ? 'center' : 'flex-start',
+                    alignItems: memoHighlightType === 'full' ? 'stretch' : (alignmentHorizontal === 'center' ? 'center' : 'flex-start')
                   }
                 ]}>
                   {dayMemos.slice(0, daySliceSize).map((m) => (
@@ -148,7 +149,8 @@ export const WeekRow = ({
                         styles.memoChip, 
                         { 
                           backgroundColor: m.color || '#C8F0C4',
-                          alignItems: alignmentHorizontal === 'center' ? 'center' : 'flex-start'
+                          alignItems: alignmentHorizontal === 'center' ? 'center' : 'flex-start',
+                          paddingHorizontal: memoHighlightType === 'full' ? 2 : 4,
                         }
                       ]}
                     >
@@ -240,7 +242,7 @@ const styles = StyleSheet.create({
   memoChip: {
     paddingHorizontal: 2,
     paddingVertical: 1,
-    borderRadius: 0,
+    borderRadius: 4,
     marginBottom: 1,
   },
   memoChipText: {

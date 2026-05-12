@@ -24,7 +24,7 @@ import { triggerWidgetUpdate } from '../src/utils/widget';
 import { useCalendarNavigation } from '../src/hooks/useCalendarNavigation';
 import { useHolidays } from '../src/hooks/useHolidays';
 import { useMemos } from '../src/hooks/useMemos';
-import { useSettings } from '../src/hooks/useSettings';
+import { AppSettings, useSettings } from '../src/hooks/useSettings';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 

@@ -14,6 +14,8 @@ export const APP_ALIGNMENT_VERTICAL_KEY = '@app_alignment_vertical_v1';
 export const APP_ALIGNMENT_HORIZONTAL_KEY = '@app_alignment_horizontal_v1';
 export const APP_SHOW_HOLIDAYS_KEY = '@app_show_holidays_v1';
 export const APP_SHOW_OTHER_MONTHS_KEY = '@app_show_other_months_v1';
+export const APP_MEMO_HIGHLIGHT_TYPE_KEY = '@app_memo_highlight_type_v1';
+export const WIDGET_MEMO_HIGHLIGHT_TYPE_KEY = '@widget_memo_highlight_type_v1';
 export const WIDGET_SETTINGS_OPEN_KEY = '@widget_settings_open_v1';
 export const SYNC_EXPIRY_MS = 1000 * 60 * 60 * 24 * 90; // 90일
 

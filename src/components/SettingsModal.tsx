@@ -70,6 +70,11 @@ export const SettingsModal = ({
     { label: '중앙', value: 'center' as const },
   ];
 
+  const highlightTypes = [
+    { label: '전체 강조', value: 'full' as const },
+    { label: '글자만 강조', value: 'text' as const },
+  ];
+
   return (
     <Modal
       transparent={true}
@@ -206,6 +211,27 @@ export const SettingsModal = ({
                       localSettings.showOtherMonths === option.value && styles.optionBtnTextActive
                     ]}>
                       {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.settingsLabel}>메모 강조 스타일</Text>
+              <View style={styles.optionRow}>
+                {highlightTypes.map((type) => (
+                  <TouchableOpacity
+                    key={type.value}
+                    style={[
+                      styles.optionBtn,
+                      localSettings.memoHighlightType === type.value && styles.optionBtnActive
+                    ]}
+                    onPress={() => updateLocalSetting({ memoHighlightType: type.value })}
+                  >
+                    <Text style={[
+                      styles.optionBtnText,
+                      localSettings.memoHighlightType === type.value && styles.optionBtnTextActive
+                    ]}>
+                      {type.label}
                     </Text>
                   </TouchableOpacity>
                 ))}

@@ -33,7 +33,7 @@ export function MemoWidget({
   settings,
   widgetHeight = 250
 }: MemoWidgetProps) {
-  const { fontSizeIndex, alignmentVertical, alignmentHorizontal, showHolidays, showOtherMonths } = settings;
+  const { fontSizeIndex, alignmentVertical, alignmentHorizontal, showHolidays, showOtherMonths, memoHighlightType } = settings;
   const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
   const alpha = '4D';
 
@@ -209,6 +209,7 @@ export function MemoWidget({
                         width: 'match_parent', 
                         flexDirection: 'column',
                         justifyContent: alignmentVertical === 'center' ? 'center' : 'flex-start',
+                        alignItems: memoHighlightType === 'full' ? 'stretch' : (alignmentHorizontal === 'center' ? 'center' : 'flex-start')
                       }}>
                         {dayMemos.slice(0, dayMemoLimit).map((memo) => {
                           const memoBg = memo.color || '#C8F0C4';
@@ -220,10 +221,10 @@ export function MemoWidget({
                               key={memo.id} 
                               style={{ 
                                 backgroundColor: finalMemoBg, 
-                                paddingHorizontal: 1, 
+                                paddingHorizontal: memoHighlightType === 'full' ? 1 : 2, 
                                 marginBottom: 0.5,
-                                borderRadius: 1,
-                                width: 'match_parent',
+                                borderRadius: 4,
+                                width: memoHighlightType === 'full' ? 'match_parent' : 'wrap_content',
                                 alignItems: alignmentHorizontal === 'center' ? 'center' : 'flex-start'
                               }}
                             >

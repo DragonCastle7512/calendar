@@ -51,7 +51,8 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
               holidays={holidays} 
               onDatePress={onDatePress} 
               fontSizeIndex={settings.fontSizeIndex}
-              alignment={settings.alignment}
+              alignmentVertical={settings.alignmentVertical}
+              alignmentHorizontal={settings.alignmentHorizontal}
               showHolidays={settings.showHolidays}
               showOtherMonths={settings.showOtherMonths}
             />

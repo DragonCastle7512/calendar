@@ -8,7 +8,8 @@ import {
   MEMO_STORAGE_KEY, 
   OFFLINE_HOLIDAYS, 
   WIDGET_FONT_SIZE_KEY,
-  WIDGET_ALIGNMENT_KEY,
+  WIDGET_ALIGNMENT_VERTICAL_KEY,
+  WIDGET_ALIGNMENT_HORIZONTAL_KEY,
   WIDGET_SHOW_HOLIDAYS_KEY,
   WIDGET_SHOW_OTHER_MONTHS_KEY
 } from '../constants/calendar';
@@ -25,11 +26,12 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
       case 'WIDGET_ADDED':
       case 'WIDGET_UPDATE':
       case 'WIDGET_RESIZED': {
-        const [savedMemos, savedWidgetDate, savedFontSize, savedAlignment, savedShowHolidays, savedShowOtherMonths] = await Promise.all([
+        const [savedMemos, savedWidgetDate, savedFontSize, savedAlignmentV, savedAlignmentH, savedShowHolidays, savedShowOtherMonths] = await Promise.all([
           AsyncStorage.getItem(MEMO_STORAGE_KEY),
           AsyncStorage.getItem(WIDGET_DATE_KEY),
           AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY),
-          AsyncStorage.getItem(WIDGET_ALIGNMENT_KEY),
+          AsyncStorage.getItem(WIDGET_ALIGNMENT_VERTICAL_KEY),
+          AsyncStorage.getItem(WIDGET_ALIGNMENT_HORIZONTAL_KEY),
           AsyncStorage.getItem(WIDGET_SHOW_HOLIDAYS_KEY),
           AsyncStorage.getItem(WIDGET_SHOW_OTHER_MONTHS_KEY)
         ]);
@@ -37,11 +39,12 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
         let memos: MemosState = savedMemos ? JSON.parse(savedMemos) : {};
         let viewDate = savedWidgetDate ? new Date(savedWidgetDate) : new Date();
         let fontSizeIndex = savedFontSize ? parseInt(savedFontSize, 10) : 1;
-        let alignment = (savedAlignment as 'top' | 'center') || 'top';
+        let alignmentV = (savedAlignmentV as 'top' | 'center') || 'top';
+        let alignmentH = (savedAlignmentH as 'left' | 'center') || 'left';
         let showHolidays = savedShowHolidays !== null ? savedShowHolidays === 'true' : true;
         let showOtherMonths = savedShowOtherMonths !== null ? savedShowOtherMonths === 'true' : true;
 
-        await render(props, viewDate, memos, fontSizeIndex, alignment, showHolidays, showOtherMonths);
+        await render(props, viewDate, memos, fontSizeIndex, alignmentV, alignmentH, showHolidays, showOtherMonths);
         break;
       }
       case 'WIDGET_CLICK':
@@ -52,11 +55,12 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
             await Linking.openURL(url);
           }
         } else if (props.clickAction === 'PREV_MONTH' || props.clickAction === 'NEXT_MONTH') {
-          const [savedMemos, savedWidgetDate, savedFontSize, savedAlignment, savedShowHolidays, savedShowOtherMonths] = await Promise.all([
+          const [savedMemos, savedWidgetDate, savedFontSize, savedAlignmentV, savedAlignmentH, savedShowHolidays, savedShowOtherMonths] = await Promise.all([
             AsyncStorage.getItem(MEMO_STORAGE_KEY),
             AsyncStorage.getItem(WIDGET_DATE_KEY),
             AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY),
-            AsyncStorage.getItem(WIDGET_ALIGNMENT_KEY),
+            AsyncStorage.getItem(WIDGET_ALIGNMENT_VERTICAL_KEY),
+            AsyncStorage.getItem(WIDGET_ALIGNMENT_HORIZONTAL_KEY),
             AsyncStorage.getItem(WIDGET_SHOW_HOLIDAYS_KEY),
             AsyncStorage.getItem(WIDGET_SHOW_OTHER_MONTHS_KEY)
           ]);
@@ -64,7 +68,8 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
           let memos: MemosState = savedMemos ? JSON.parse(savedMemos) : {};
           let viewDate = savedWidgetDate ? new Date(savedWidgetDate) : new Date();
           let fontSizeIndex = savedFontSize ? parseInt(savedFontSize, 10) : 1;
-          let alignment = (savedAlignment as 'top' | 'center') || 'top';
+          let alignmentV = (savedAlignmentV as 'top' | 'center') || 'top';
+          let alignmentH = (savedAlignmentH as 'left' | 'center') || 'left';
           let showHolidays = savedShowHolidays !== null ? savedShowHolidays === 'true' : true;
           let showOtherMonths = savedShowOtherMonths !== null ? savedShowOtherMonths === 'true' : true;
 
@@ -75,7 +80,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
           }
           
           AsyncStorage.setItem(WIDGET_DATE_KEY, viewDate.toISOString());
-          await render(props, viewDate, memos, fontSizeIndex, alignment, showHolidays, showOtherMonths);
+          await render(props, viewDate, memos, fontSizeIndex, alignmentV, alignmentH, showHolidays, showOtherMonths);
         } else if (props.clickAction === 'OPEN_SETTINGS_APP') {
           const url = 'calendarapp://?source=settings';
           await Linking.openURL(url);
@@ -94,7 +99,8 @@ async function render(
   viewDate: Date, 
   memos: MemosState, 
   fontSizeIndex: number,
-  alignment: 'top' | 'center',
+  alignmentVertical: 'top' | 'center',
+  alignmentHorizontal: 'left' | 'center',
   showHolidays: boolean,
   showOtherMonths: boolean
 ) {
@@ -146,7 +152,8 @@ async function render(
       anniversaries={anniversaries}
       renderTime={Date.now()}
       fontSizeIndex={fontSizeIndex}
-      alignment={alignment}
+      alignmentVertical={alignmentVertical}
+      alignmentHorizontal={alignmentHorizontal}
       showHolidays={showHolidays}
       showOtherMonths={showOtherMonths}
       widgetHeight={props.height || props.widgetInfo?.height}

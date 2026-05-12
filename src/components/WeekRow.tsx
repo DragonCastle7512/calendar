@@ -27,7 +27,8 @@ interface WeekRowProps {
   isFocusView?: boolean;
   onDatePress: (date: Date) => void;
   fontSizeIndex?: number;
-  alignment?: 'top' | 'center';
+  alignmentVertical?: 'top' | 'center';
+  alignmentHorizontal?: 'left' | 'center';
   showHolidays?: boolean;
   showOtherMonths?: boolean;
 }
@@ -43,7 +44,8 @@ export const WeekRow = ({
   isFocusView = false,
   onDatePress,
   fontSizeIndex = 1,
-  alignment = 'top',
+  alignmentVertical = 'top',
+  alignmentHorizontal = 'left',
   showHolidays = true,
   showOtherMonths = true,
 }: WeekRowProps) => {
@@ -139,11 +141,34 @@ export const WeekRow = ({
 
                 <View style={[
                   styles.memoPreviewArea, 
-                  { flex: 1, justifyContent: alignment === 'center' ? 'center' : 'flex-start' }
+                  { 
+                    flex: 1, 
+                    justifyContent: alignmentVertical === 'center' ? 'center' : 'flex-start',
+                  }
                 ]}>
                   {dayMemos.slice(0, daySliceSize).map((m) => (
-                    <View key={m.id} style={[styles.memoChip, { backgroundColor: m.color || '#C8F0C4' }]}>
-                      <Text style={[styles.memoChipText, { fontSize: 9 * scale }]} numberOfLines={1}>{m.title}</Text>
+                    <View 
+                      key={m.id} 
+                      style={[
+                        styles.memoChip, 
+                        { 
+                          backgroundColor: m.color || '#C8F0C4',
+                          alignItems: alignmentHorizontal === 'center' ? 'center' : 'flex-start'
+                        }
+                      ]}
+                    >
+                      <Text 
+                        style={[
+                          styles.memoChipText, 
+                          { 
+                            fontSize: 9 * scale,
+                            textAlign: alignmentHorizontal === 'center' ? 'center' : 'left'
+                          }
+                        ]} 
+                        numberOfLines={1}
+                      >
+                        {m.title}
+                      </Text>
                     </View>
                   ))}
                 </View>

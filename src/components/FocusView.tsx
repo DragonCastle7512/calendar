@@ -50,7 +50,8 @@ export const FocusView: React.FC<FocusViewProps> = ({
         onDatePress={onDatePress} 
         isFocusView 
         fontSizeIndex={settings.fontSizeIndex}
-        alignment={settings.alignment}
+        alignmentVertical={settings.alignmentVertical}
+        alignmentHorizontal={settings.alignmentHorizontal}
         showHolidays={settings.showHolidays}
         showOtherMonths={settings.showOtherMonths}
       />
@@ -72,7 +73,8 @@ export const FocusView: React.FC<FocusViewProps> = ({
           onDatePress={onDatePress} 
           isFocusView 
           fontSizeIndex={settings.fontSizeIndex}
-          alignment={settings.alignment}
+          alignmentVertical={settings.alignmentVertical}
+          alignmentHorizontal={settings.alignmentHorizontal}
           showHolidays={settings.showHolidays}
           showOtherMonths={settings.showOtherMonths}
         />

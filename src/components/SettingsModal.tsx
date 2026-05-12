@@ -18,10 +18,17 @@ interface SettingsModalProps {
   visible: boolean;
   onClose: () => void;
   fontSizeIndex: number;
-  alignment: 'top' | 'center';
+  alignmentVertical: 'top' | 'center';
+  alignmentHorizontal: 'left' | 'center';
   showHolidays: boolean;
   showOtherMonths: boolean;
-  onSave: (fontSizeIndex: number, alignment: 'top' | 'center', showHolidays: boolean, showOtherMonths: boolean) => void;
+  onSave: (
+    fontSizeIndex: number,
+    alignmentVertical: 'top' | 'center',
+    alignmentHorizontal: 'left' | 'center',
+    showHolidays: boolean,
+    showOtherMonths: boolean
+  ) => void;
   isFromWidget?: boolean;
 }
 
@@ -29,25 +36,28 @@ export const SettingsModal = ({
   visible,
   onClose,
   fontSizeIndex: initialFontSize,
-  alignment: initialAlignment,
+  alignmentVertical: initialAlignmentV,
+  alignmentHorizontal: initialAlignmentH,
   showHolidays: initialShowHolidays,
   showOtherMonths: initialShowOtherMonths,
   onSave,
   isFromWidget = false,
 }: SettingsModalProps) => {
   const [localFontSize, setLocalFontSize] = useState(initialFontSize);
-  const [localAlignment, setLocalAlignment] = useState(initialAlignment);
+  const [localAlignmentV, setLocalAlignmentV] = useState(initialAlignmentV);
+  const [localAlignmentH, setLocalAlignmentH] = useState(initialAlignmentH);
   const [localShowHolidays, setLocalShowHolidays] = useState(initialShowHolidays);
   const [localShowOtherMonths, setLocalShowOtherMonths] = useState(initialShowOtherMonths);
 
   useEffect(() => {
     if (visible) {
       setLocalFontSize(initialFontSize);
-      setLocalAlignment(initialAlignment);
+      setLocalAlignmentV(initialAlignmentV);
+      setLocalAlignmentH(initialAlignmentH);
       setLocalShowHolidays(initialShowHolidays);
       setLocalShowOtherMonths(initialShowOtherMonths);
     }
-  }, [visible, initialFontSize, initialAlignment, initialShowHolidays, initialShowOtherMonths]);
+  }, [visible, initialFontSize, initialAlignmentV, initialAlignmentH, initialShowHolidays, initialShowOtherMonths]);
 
   const handleBack = () => {
     if (isFromWidget) {
@@ -58,7 +68,7 @@ export const SettingsModal = ({
   };
 
   const handleSave = () => {
-    onSave(localFontSize, localAlignment, localShowHolidays, localShowOtherMonths);
+    onSave(localFontSize, localAlignmentV, localAlignmentH, localShowHolidays, localShowOtherMonths);
   };
 
   const fontSizes = [
@@ -67,8 +77,13 @@ export const SettingsModal = ({
     { label: '크게', index: 2 },
   ];
 
-  const alignments = [
+  const alignmentsVertical = [
     { label: '상단', value: 'top' as const },
+    { label: '중앙', value: 'center' as const },
+  ];
+
+  const alignmentsHorizontal = [
+    { label: '왼쪽', value: 'left' as const },
     { label: '중앙', value: 'center' as const },
   ];
 
@@ -118,25 +133,51 @@ export const SettingsModal = ({
                 ))}
               </View>
 
-              <Text style={styles.settingsLabel}>메모 정렬</Text>
-              <View style={styles.optionRow}>
-                {alignments.map((align) => (
-                  <TouchableOpacity
-                    key={align.value}
-                    style={[
-                      styles.optionBtn,
-                      localAlignment === align.value && styles.optionBtnActive
-                    ]}
-                    onPress={() => setLocalAlignment(align.value)}
-                  >
-                    <Text style={[
-                      styles.optionBtnText,
-                      localAlignment === align.value && styles.optionBtnTextActive
-                    ]}>
-                      {align.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.alignContainer}>
+                <View style={styles.align}>
+                  <Text style={styles.settingsLabel}>메모 정렬(수직)</Text>
+                  <View style={styles.optionRow}>
+                    {alignmentsVertical.map((align) => (
+                      <TouchableOpacity
+                        key={align.value}
+                        style={[
+                          styles.optionBtn,
+                          localAlignmentV === align.value && styles.optionBtnActive
+                        ]}
+                        onPress={() => setLocalAlignmentV(align.value)}
+                      >
+                        <Text style={[
+                          styles.optionBtnText,
+                          localAlignmentV === align.value && styles.optionBtnTextActive
+                        ]}>
+                          {align.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+                <View style={styles.align}>
+                  <Text style={styles.settingsLabel}>메모 정렬(수평)</Text>
+                  <View style={styles.optionRow}>
+                    {alignmentsHorizontal.map((align) => (
+                      <TouchableOpacity
+                        key={align.value}
+                        style={[
+                          styles.optionBtn,
+                          localAlignmentH === align.value && styles.optionBtnActive
+                        ]}
+                        onPress={() => setLocalAlignmentH(align.value)}
+                      >
+                        <Text style={[
+                          styles.optionBtnText,
+                          localAlignmentH === align.value && styles.optionBtnTextActive
+                        ]}>
+                          {align.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
               </View>
 
               <Text style={styles.settingsLabel}>공휴일 표시</Text>
@@ -313,4 +354,12 @@ const styles = StyleSheet.create({
     fontSize: 15, 
     fontWeight: '700' 
   },
+  alignContainer: {
+    flexDirection: 'row',
+    gap: 10
+  },
+  align: {
+    flex: 1,
+    flexDirection: 'column'
+  }
 });

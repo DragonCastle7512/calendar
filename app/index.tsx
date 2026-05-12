@@ -53,7 +53,8 @@ export default function CalendarMemoApp() {
     triggerWidgetUpdate({
       memos: latestMemos,
       fontSizeIndex: widgetSettings.fontSizeIndex,
-      alignment: widgetSettings.alignment,
+      alignmentVertical: widgetSettings.alignmentVertical,
+      alignmentHorizontal: widgetSettings.alignmentHorizontal,
       showHolidays: widgetSettings.showHolidays,
       showOtherMonths: widgetSettings.showOtherMonths,
       viewDate: widgetViewDateState,
@@ -122,8 +123,20 @@ export default function CalendarMemoApp() {
     }
   }, [changeMonth]);
 
-  const handleUpdateSettings = async (index: number, align: 'top' | 'center', showHolidays: boolean, showOtherMonths: boolean) => {
-    const newSettings = { fontSizeIndex: index, alignment: align, showHolidays, showOtherMonths };
+  const handleUpdateSettings = async (
+    index: number, 
+    alignV: 'top' | 'center', 
+    alignH: 'left' | 'center', 
+    showHolidays: boolean, 
+    showOtherMonths: boolean
+  ) => {
+    const newSettings = { 
+      fontSizeIndex: index, 
+      alignmentVertical: alignV, 
+      alignmentHorizontal: alignH, 
+      showHolidays, 
+      showOtherMonths 
+    };
     if (isSettingsFromWidget) {
       await updateWidgetSettings(newSettings);
       triggerWidgetUpdate({
@@ -279,7 +292,8 @@ export default function CalendarMemoApp() {
             visible={settingsVisible}
             onClose={() => setSettingsVisible(false)}
             fontSizeIndex={isSettingsFromWidget ? widgetSettings.fontSizeIndex : appSettings.fontSizeIndex}
-            alignment={isSettingsFromWidget ? widgetSettings.alignment : appSettings.alignment}
+            alignmentVertical={isSettingsFromWidget ? widgetSettings.alignmentVertical : appSettings.alignmentVertical}
+            alignmentHorizontal={isSettingsFromWidget ? widgetSettings.alignmentHorizontal : appSettings.alignmentHorizontal}
             showHolidays={isSettingsFromWidget ? widgetSettings.showHolidays : appSettings.showHolidays}
             showOtherMonths={isSettingsFromWidget ? widgetSettings.showOtherMonths : appSettings.showOtherMonths}
             onSave={handleUpdateSettings}

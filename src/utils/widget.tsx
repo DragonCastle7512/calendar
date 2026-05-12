@@ -10,7 +10,8 @@ import { MemoWidget } from '../widgets/MemoWidget';
 interface WidgetUpdateData {
   memos: MemosState;
   fontSizeIndex: number;
-  alignment: 'top' | 'center';
+  alignmentVertical: 'top' | 'center';
+  alignmentHorizontal: 'left' | 'center';
   showHolidays: boolean;
   showOtherMonths: boolean;
   viewDate: Date;
@@ -23,7 +24,16 @@ export const triggerWidgetUpdate = async (data: WidgetUpdateData) => {
   InteractionManager.runAfterInteractions(() => {
     setTimeout(async () => {
       try {
-        const { memos, fontSizeIndex, alignment, showHolidays, showOtherMonths, viewDate, holidays } = data;
+        const { 
+          memos, 
+          fontSizeIndex, 
+          alignmentVertical, 
+          alignmentHorizontal, 
+          showHolidays, 
+          showOtherMonths, 
+          viewDate, 
+          holidays 
+        } = data;
         const year = viewDate.getFullYear();
         const month = viewDate.getMonth();
         const todayStr = getDateKey(new Date());
@@ -62,7 +72,8 @@ export const triggerWidgetUpdate = async (data: WidgetUpdateData) => {
               anniversaries={widgetAnniversaries} 
               renderTime={Date.now()}
               fontSizeIndex={fontSizeIndex}
-              alignment={alignment}
+              alignmentVertical={alignmentVertical}
+              alignmentHorizontal={alignmentHorizontal}
               showHolidays={showHolidays}
               showOtherMonths={showOtherMonths}
               widgetHeight={widgetInfo.height}

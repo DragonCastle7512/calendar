@@ -1,11 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useState } from 'react';
 import {
-  APP_ALIGNMENT_KEY,
+  APP_ALIGNMENT_HORIZONTAL_KEY,
+  APP_ALIGNMENT_VERTICAL_KEY,
   APP_FONT_SIZE_KEY,
   APP_SHOW_HOLIDAYS_KEY,
   APP_SHOW_OTHER_MONTHS_KEY,
-  WIDGET_ALIGNMENT_KEY,
+  WIDGET_ALIGNMENT_HORIZONTAL_KEY,
+  WIDGET_ALIGNMENT_VERTICAL_KEY,
   WIDGET_FONT_SIZE_KEY,
   WIDGET_SHOW_HOLIDAYS_KEY,
   WIDGET_SHOW_OTHER_MONTHS_KEY
@@ -13,7 +15,8 @@ import {
 
 export interface AppSettings {
   fontSizeIndex: number;
-  alignment: 'top' | 'center';
+  alignmentVertical: 'top' | 'center';
+  alignmentHorizontal: 'left' | 'center';
   showHolidays: boolean;
   showOtherMonths: boolean;
 }
@@ -21,14 +24,16 @@ export interface AppSettings {
 export const useSettings = () => {
   const [widgetSettings, setWidgetSettings] = useState<AppSettings>({
     fontSizeIndex: 1,
-    alignment: 'top',
+    alignmentVertical: 'top',
+    alignmentHorizontal: 'left',
     showHolidays: true,
     showOtherMonths: true,
   });
 
   const [appSettings, setAppSettings] = useState<AppSettings>({
     fontSizeIndex: 1,
-    alignment: 'top',
+    alignmentVertical: 'top',
+    alignmentHorizontal: 'left',
     showHolidays: true,
     showOtherMonths: true,
   });
@@ -37,31 +42,37 @@ export const useSettings = () => {
     try {
       const [
         savedWidgetFontSize,
-        savedWidgetAlignment,
+        savedWidgetAlignmentV,
+        savedWidgetAlignmentH,
         savedWidgetShowHolidays,
         savedWidgetShowOtherMonths,
         savedAppFontSize,
-        savedAppAlignment,
+        savedAppAlignmentV,
+        savedAppAlignmentH,
         savedAppShowHolidays,
         savedAppShowOtherMonths,
       ] = await Promise.all([
         AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY),
-        AsyncStorage.getItem(WIDGET_ALIGNMENT_KEY),
+        AsyncStorage.getItem(WIDGET_ALIGNMENT_VERTICAL_KEY),
+        AsyncStorage.getItem(WIDGET_ALIGNMENT_HORIZONTAL_KEY),
         AsyncStorage.getItem(WIDGET_SHOW_HOLIDAYS_KEY),
         AsyncStorage.getItem(WIDGET_SHOW_OTHER_MONTHS_KEY),
         AsyncStorage.getItem(APP_FONT_SIZE_KEY),
-        AsyncStorage.getItem(APP_ALIGNMENT_KEY),
+        AsyncStorage.getItem(APP_ALIGNMENT_VERTICAL_KEY),
+        AsyncStorage.getItem(APP_ALIGNMENT_HORIZONTAL_KEY),
         AsyncStorage.getItem(APP_SHOW_HOLIDAYS_KEY),
         AsyncStorage.getItem(APP_SHOW_OTHER_MONTHS_KEY),
       ]);
 
       if (savedWidgetFontSize) setWidgetSettings(prev => ({ ...prev, fontSizeIndex: parseInt(savedWidgetFontSize, 10) }));
-      if (savedWidgetAlignment) setWidgetSettings(prev => ({ ...prev, alignment: savedWidgetAlignment as 'top' | 'center' }));
+      if (savedWidgetAlignmentV) setWidgetSettings(prev => ({ ...prev, alignmentVertical: savedWidgetAlignmentV as 'top' | 'center' }));
+      if (savedWidgetAlignmentH) setWidgetSettings(prev => ({ ...prev, alignmentHorizontal: savedWidgetAlignmentH as 'left' | 'center' }));
       if (savedWidgetShowHolidays) setWidgetSettings(prev => ({ ...prev, showHolidays: savedWidgetShowHolidays === 'true' }));
       if (savedWidgetShowOtherMonths) setWidgetSettings(prev => ({ ...prev, showOtherMonths: savedWidgetShowOtherMonths === 'true' }));
 
       if (savedAppFontSize) setAppSettings(prev => ({ ...prev, fontSizeIndex: parseInt(savedAppFontSize, 10) }));
-      if (savedAppAlignment) setAppSettings(prev => ({ ...prev, alignment: savedAppAlignment as 'top' | 'center' }));
+      if (savedAppAlignmentV) setAppSettings(prev => ({ ...prev, alignmentVertical: savedAppAlignmentV as 'top' | 'center' }));
+      if (savedAppAlignmentH) setAppSettings(prev => ({ ...prev, alignmentHorizontal: savedAppAlignmentH as 'left' | 'center' }));
       if (savedAppShowHolidays) setAppSettings(prev => ({ ...prev, showHolidays: savedAppShowHolidays === 'true' }));
       if (savedAppShowOtherMonths) setAppSettings(prev => ({ ...prev, showOtherMonths: savedAppShowOtherMonths === 'true' }));
     } catch (e) {
@@ -74,7 +85,8 @@ export const useSettings = () => {
       const newSettings = { ...prev, ...settings };
       Promise.all([
         AsyncStorage.setItem(WIDGET_FONT_SIZE_KEY, newSettings.fontSizeIndex.toString()),
-        AsyncStorage.setItem(WIDGET_ALIGNMENT_KEY, newSettings.alignment),
+        AsyncStorage.setItem(WIDGET_ALIGNMENT_VERTICAL_KEY, newSettings.alignmentVertical),
+        AsyncStorage.setItem(WIDGET_ALIGNMENT_HORIZONTAL_KEY, newSettings.alignmentHorizontal),
         AsyncStorage.setItem(WIDGET_SHOW_HOLIDAYS_KEY, newSettings.showHolidays.toString()),
         AsyncStorage.setItem(WIDGET_SHOW_OTHER_MONTHS_KEY, newSettings.showOtherMonths.toString()),
       ]);
@@ -87,7 +99,8 @@ export const useSettings = () => {
       const newSettings = { ...prev, ...settings };
       Promise.all([
         AsyncStorage.setItem(APP_FONT_SIZE_KEY, newSettings.fontSizeIndex.toString()),
-        AsyncStorage.setItem(APP_ALIGNMENT_KEY, newSettings.alignment),
+        AsyncStorage.setItem(APP_ALIGNMENT_VERTICAL_KEY, newSettings.alignmentVertical),
+        AsyncStorage.setItem(APP_ALIGNMENT_HORIZONTAL_KEY, newSettings.alignmentHorizontal),
         AsyncStorage.setItem(APP_SHOW_HOLIDAYS_KEY, newSettings.showHolidays.toString()),
         AsyncStorage.setItem(APP_SHOW_OTHER_MONTHS_KEY, newSettings.showOtherMonths.toString()),
       ]);

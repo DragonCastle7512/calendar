@@ -17,7 +17,8 @@ interface MemoWidgetProps {
   anniversaries: { [key: string]: string };
   renderTime: number;
   fontSizeIndex?: number;
-  alignment?: 'top' | 'center';
+  alignmentVertical?: 'top' | 'center';
+  alignmentHorizontal?: 'left' | 'center';
   showHolidays?: boolean;
   showOtherMonths?: boolean;
   widgetHeight?: number;
@@ -33,7 +34,8 @@ export function MemoWidget({
   anniversaries = {},
   renderTime,
   fontSizeIndex = 1,
-  alignment = 'top',
+  alignmentVertical = 'top',
+  alignmentHorizontal = 'left',
   showHolidays = true,
   showOtherMonths = true,
   widgetHeight = 250
@@ -216,7 +218,7 @@ export function MemoWidget({
                         flex: 1,
                         width: 'match_parent', 
                         flexDirection: 'column',
-                        justifyContent: alignment === 'center' ? 'center' : 'flex-start'
+                        justifyContent: alignmentVertical === 'center' ? 'center' : 'flex-start',
                       }}>
                         {dayMemos.slice(0, dayMemoLimit).map((memo) => {
                           const memoBg = memo.color || '#C8F0C4';
@@ -231,12 +233,18 @@ export function MemoWidget({
                                 paddingHorizontal: 1, 
                                 marginBottom: 0.5,
                                 borderRadius: 1,
-                                width: 'match_parent'
+                                width: 'match_parent',
+                                alignItems: alignmentHorizontal === 'center' ? 'center' : 'flex-start'
                               }}
                             >
                               <TextWidget 
                                 text={memo.title} 
-                                style={{ fontSize: 9 * scale, color: memoTextColor, fontWeight: '500' }} 
+                                style={{ 
+                                  fontSize: 9 * scale, 
+                                  color: memoTextColor, 
+                                  fontWeight: '500',
+                                  textAlign: alignmentHorizontal === 'center' ? 'center' : 'left'
+                                }} 
                                 maxLines={1} 
                               />
                             </FlexWidget>

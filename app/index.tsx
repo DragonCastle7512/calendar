@@ -17,11 +17,10 @@ import { SettingsModal } from '../src/components/SettingsModal';
 import { WeekDaysHeader } from '../src/components/WeekDaysHeader';
 import { WidgetModal } from '../src/components/WidgetModal';
 
-import { MEMO_COLORS } from '../src/constants/calendar';
-import { MemoEntry, RepeatType } from '../src/types/calendar';
 import { getDateKey } from '../src/utils/date';
 import { triggerWidgetUpdate } from '../src/utils/widget';
 
+import { useMemoEditor } from '@/src/hooks/useMemoEditor';
 import { useCalendarNavigation } from '../src/hooks/useCalendarNavigation';
 import { useHolidays } from '../src/hooks/useHolidays';
 import { useMemos } from '../src/hooks/useMemos';
@@ -36,16 +35,9 @@ export default function CalendarMemoApp() {
   const [widgetSelectedDate, setWidgetSelectedDate] = useState<string | null>(null);
   const [widgetViewDateState, setWidgetViewDateState] = useState(new Date());
   
-  const [modalVisible, setModalVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [isSettingsFromWidget, setIsSettingsFromWidget] = useState(false);
 
-  const [newTitle, setNewTitle] = useState('');
-  const [newContent, setNewContent] = useState('');
-  const [selectedColor, setSelectedColor] = useState(MEMO_COLORS[0]);
-  const [repeat, setRepeat] = useState<RepeatType>('none');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [moveTargetDate, setMoveTargetDate] = useState<string | null>(null);
   const [todayStr, setTodayStr] = useState(() => getDateKey(new Date()));
 
   const { appSettings, widgetSettings, loadSettings, updateAppSettings, updateWidgetSettings } = useSettings();
@@ -60,7 +52,17 @@ export default function CalendarMemoApp() {
     });
   }, [widgetSettings, widgetViewDateState, holidays]);
 
-  const { memos, loadMemos, saveMemo, deleteMemo, moveMemo, updateMemoColor, reorderMemos } = useMemos(handleWidgetUpdate);
+  const { memos, loadMemos, saveMemo, deleteMemo, updateMemoColor, reorderMemos } = useMemos(handleWidgetUpdate);
+  const { 
+    modalVisible, setModalVisible,
+    newTitle, setNewTitle,
+    newContent, setNewContent,
+    selectedColor,
+    repeat, setRepeat,
+    editingId,
+    moveTargetDate, setMoveTargetDate,
+    openAddModal, openEditModal, handleSaveMemo
+  } = useMemoEditor(saveMemo, widgetSelectedDate, selectedDate);
 
   useCalendarNavigation(
     { settingsVisible, isSettingsFromWidget, widgetSelectedDate, modalVisible, selectedDate },
@@ -164,24 +166,6 @@ export default function CalendarMemoApp() {
     } else {
       await updateAppSettings(newSettings);
       setSettingsVisible(false);
-    }
-  };
-
-  const openAddModal = () => {
-    setEditingId(null); setNewTitle(''); setNewContent(''); setSelectedColor(MEMO_COLORS[0]); setRepeat('none'); setMoveTargetDate(null); setModalVisible(true);
-  };
-  const openEditModal = (item: MemoEntry) => {
-    setEditingId(item.id); setNewTitle(item.title); setNewContent(item.content); setSelectedColor(item.color); setRepeat(item.repeat || 'none'); setMoveTargetDate(null); setModalVisible(true);
-  };
-
-  const handleSaveMemo = async () => {
-    const originalTarget = widgetSelectedDate || selectedDate;
-    const finalTarget = moveTargetDate || originalTarget;
-    
-    if (finalTarget && originalTarget) {
-      await saveMemo(finalTarget, editingId, { title: newTitle, content: newContent, color: selectedColor, repeat }, originalTarget);
-      setModalVisible(false);
-      setMoveTargetDate(null);
     }
   };
 

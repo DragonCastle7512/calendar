@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  AppState,
   Dimensions,
   StatusBar,
   StyleSheet,
@@ -45,6 +46,7 @@ export default function CalendarMemoApp() {
   const [repeat, setRepeat] = useState<RepeatType>('none');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [moveTargetDate, setMoveTargetDate] = useState<string | null>(null);
+  const [todayStr, setTodayStr] = useState(() => getDateKey(new Date()));
 
   const { appSettings, widgetSettings, loadSettings, updateAppSettings, updateWidgetSettings } = useSettings();
   const { holidays, syncHolidays } = useHolidays();
@@ -92,6 +94,36 @@ export default function CalendarMemoApp() {
       tension: 40,
     }).start();
   }, [selectedDate]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const refreshToday = () => {
+      const nextToday = getDateKey(new Date());
+      setTodayStr(prev => (prev === nextToday ? prev : nextToday));
+    };
+
+    const scheduleNextMidnight = () => {
+      const now = new Date();
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+      const delay = Math.max(nextMidnight.getTime() - now.getTime(), 1000);
+      timer = setTimeout(() => {
+        refreshToday();
+        scheduleNextMidnight();
+      }, delay);
+    };
+
+    scheduleNextMidnight();
+
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshToday();
+    });
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      appStateSub.remove();
+    };
+  }, []);
 
   // 4. Handlers
   const changeMonth = useCallback((offset: number) => {
@@ -174,7 +206,6 @@ export default function CalendarMemoApp() {
     return weeks.findIndex(week => week.some(d => getDateKey(d) === selectedDate));
   }, [weeks, selectedDate]);
 
-  const todayStr = getDateKey(new Date());
   const targetForMemos = widgetSelectedDate || selectedDate || '';
   const selectedMemos = targetForMemos ? (memos[targetForMemos] || []) : [];
   const showCalendar = !widgetSelectedDate && (!settingsVisible || !isSettingsFromWidget);

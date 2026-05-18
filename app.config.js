@@ -2,13 +2,22 @@ const appJson = require('./app.json');
 
 module.exports = ({ config }) => {
   const base = appJson.expo || {};
-  const plugins = [...(base.plugins || [])];
-  const hasPlugin = plugins.some((p) =>
-    Array.isArray(p) ? p[0] === './plugins/with-midnight-widget-scheduler' : p === './plugins/with-midnight-widget-scheduler'
+  const pluginName = './plugins/with-midnight-widget-scheduler';
+  const basePlugins = (base.plugins || []).filter((p) =>
+    Array.isArray(p) ? p[0] !== pluginName : p !== pluginName
   );
+  const widgetPluginIndex = basePlugins.findIndex((p) =>
+    Array.isArray(p) ? p[0] === 'react-native-android-widget' : p === 'react-native-android-widget'
+  );
+  const nativePlugin = [pluginName, { manifest: false, native: true }];
+  const manifestPlugin = [pluginName, { manifest: true, native: false }];
+  const plugins = [...basePlugins];
 
-  if (!hasPlugin) {
-    plugins.push('./plugins/with-midnight-widget-scheduler');
+  if (widgetPluginIndex >= 0) {
+    plugins.splice(widgetPluginIndex, 0, nativePlugin);
+    plugins.splice(widgetPluginIndex + 2, 0, manifestPlugin);
+  } else {
+    plugins.push(nativePlugin, manifestPlugin);
   }
 
   return {

@@ -3,15 +3,44 @@ package com.dstle.calendar.widget
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import java.util.Calendar
 
 object WidgetUpdateScheduler {
   const val ACTION_MIDNIGHT_WIDGET_UPDATE = "com.dstle.calendar.ACTION_MIDNIGHT_WIDGET_UPDATE"
   private const val REQUEST_CODE_MIDNIGHT = 88421
+  private var userPresentReceiver: BroadcastReceiver? = null
+
+  fun registerUserPresentReceiver(context: Context) {
+    if (userPresentReceiver != null) return
+
+    val appContext = context.applicationContext
+    val filter = IntentFilter().apply {
+      addAction(Intent.ACTION_USER_PRESENT)
+      addAction(Intent.ACTION_SCREEN_ON)
+    }
+
+    userPresentReceiver = object : BroadcastReceiver() {
+      override fun onReceive(context: Context, intent: Intent?) {
+        val action = intent?.action
+
+        if (Intent.ACTION_USER_PRESENT == action || Intent.ACTION_SCREEN_ON == action) {
+          requestWidgetUpdate(appContext)
+        }
+      }
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      appContext.registerReceiver(userPresentReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+    } else {
+      appContext.registerReceiver(userPresentReceiver, filter)
+    }
+  }
 
   fun scheduleNextMidnight(context: Context) {
     if (!hasWidgets(context)) {

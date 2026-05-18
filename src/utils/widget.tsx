@@ -1,7 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
 import { InteractionManager, Platform } from 'react-native';
 import { requestWidgetUpdate } from 'react-native-android-widget';
-import { FIXED_ANNIVERSARIES, OFFLINE_HOLIDAYS } from '../constants/calendar';
+import { FIXED_ANNIVERSARIES, OFFLINE_HOLIDAYS, WIDGET_DATE_KEY, WIDGET_NAV_TIMESTAMP_KEY } from '../constants/calendar';
 import { MemosState } from '../types/calendar';
 import { getDateKey } from '../utils/date';
 import { getLunarHoliday } from '../utils/holiday';
@@ -18,6 +19,25 @@ interface WidgetUpdateData {
 
 export const triggerWidgetUpdate = async (data: WidgetUpdateData) => {
   if (Platform.OS !== 'android') return;
+
+  try {
+    const now = new Date();
+    const isCurrentMonth = 
+      data.viewDate.getFullYear() === now.getFullYear() && 
+      data.viewDate.getMonth() === now.getMonth();
+    
+    if (isCurrentMonth) {
+      await Promise.all([
+        AsyncStorage.removeItem(WIDGET_DATE_KEY),
+        AsyncStorage.removeItem(WIDGET_NAV_TIMESTAMP_KEY)
+      ]);
+    } else {
+      await AsyncStorage.setItem(WIDGET_DATE_KEY, data.viewDate.toISOString());
+      await AsyncStorage.setItem(WIDGET_NAV_TIMESTAMP_KEY, Date.now().toString());
+    }
+  } catch (e) {
+    console.log('[DEBUG] Failed to sync widget date:', e);
+  }
 
   InteractionManager.runAfterInteractions(() => {
     setTimeout(async () => {

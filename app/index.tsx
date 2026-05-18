@@ -101,8 +101,25 @@ export default function CalendarMemoApp() {
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     const refreshToday = () => {
-      const nextToday = getDateKey(new Date());
-      setTodayStr(prev => (prev === nextToday ? prev : nextToday));
+      const now = new Date();
+      const nextToday = getDateKey(now);
+      
+      setTodayStr(prev => {
+        if (prev === nextToday) return prev;
+        
+        const oldTodayDate = new Date(prev);
+        const isShowingOldCurrentMonth = 
+          viewDate.getFullYear() === oldTodayDate.getFullYear() && 
+          viewDate.getMonth() === oldTodayDate.getMonth();
+        
+        if (isShowingOldCurrentMonth) {
+          const nextViewDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          setViewDate(nextViewDate);
+          setWidgetViewDateState(nextViewDate);
+        }
+        
+        return nextToday;
+      });
     };
 
     const scheduleNextMidnight = () => {

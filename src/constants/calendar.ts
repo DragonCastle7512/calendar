@@ -17,6 +17,8 @@ export const APP_SHOW_OTHER_MONTHS_KEY = '@app_show_other_months_v1';
 export const APP_MEMO_HIGHLIGHT_TYPE_KEY = '@app_memo_highlight_type_v1';
 export const WIDGET_MEMO_HIGHLIGHT_TYPE_KEY = '@widget_memo_highlight_type_v1';
 export const WIDGET_SETTINGS_OPEN_KEY = '@widget_settings_open_v1';
+export const WIDGET_DATE_KEY = '@widget_view_date_v1';
+export const WIDGET_NAV_TIMESTAMP_KEY = '@widget_nav_timestamp_v1';
 export const SYNC_EXPIRY_MS = 1000 * 60 * 60 * 24 * 90; // 90일
 
 export const CELL_WIDTH = SCREEN_WIDTH / 7;

@@ -6,15 +6,19 @@ import android.content.Intent
 
 class MidnightWidgetUpdateReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent?) {
-    when (intent?.action) {
+    val action = intent?.action
+
+    when (action) {
       WidgetUpdateScheduler.ACTION_MIDNIGHT_WIDGET_UPDATE -> {
         WidgetUpdateScheduler.requestWidgetUpdate(context)
         WidgetUpdateScheduler.scheduleNextMidnight(context)
       }
-      Intent.ACTION_BOOT_COMPLETED,
       Intent.ACTION_TIME_CHANGED,
       Intent.ACTION_TIMEZONE_CHANGED,
+      Intent.ACTION_USER_PRESENT,
+      "android.intent.action.TIME_SET",
       Intent.ACTION_MY_PACKAGE_REPLACED -> {
+        WidgetUpdateScheduler.requestWidgetUpdate(context)
         WidgetUpdateScheduler.scheduleNextMidnight(context)
       }
     }

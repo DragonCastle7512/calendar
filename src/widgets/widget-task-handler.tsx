@@ -12,7 +12,9 @@ import {
   WIDGET_FONT_SIZE_KEY,
   WIDGET_SHOW_HOLIDAYS_KEY,
   WIDGET_SHOW_OTHER_MONTHS_KEY,
-  WIDGET_MEMO_HIGHLIGHT_TYPE_KEY
+  WIDGET_MEMO_HIGHLIGHT_TYPE_KEY,
+  WIDGET_DATE_KEY,
+  WIDGET_NAV_TIMESTAMP_KEY
 } from '../constants/calendar';
 import { AppSettings } from '../hooks/useSettings';
 import { MemosState } from '../types/calendar';
@@ -20,17 +22,14 @@ import { getDateKey } from '../utils/date';
 import { getLunarHoliday } from '../utils/holiday';
 import { MemoWidget } from './MemoWidget';
 
-const WIDGET_DATE_KEY = '@widget_view_date';
-
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
   try {
     switch (props.widgetAction) {
       case 'WIDGET_ADDED':
       case 'WIDGET_UPDATE':
       case 'WIDGET_RESIZED': {
-        const [savedMemos, savedWidgetDate, savedFontSize, savedAlignmentV, savedAlignmentH, savedShowHolidays, savedShowOtherMonths, savedHighlightType] = await Promise.all([
+        const [savedMemos, savedFontSize, savedAlignmentV, savedAlignmentH, savedShowHolidays, savedShowOtherMonths, savedHighlightType] = await Promise.all([
           AsyncStorage.getItem(MEMO_STORAGE_KEY),
-          AsyncStorage.getItem(WIDGET_DATE_KEY),
           AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY),
           AsyncStorage.getItem(WIDGET_ALIGNMENT_VERTICAL_KEY),
           AsyncStorage.getItem(WIDGET_ALIGNMENT_HORIZONTAL_KEY),
@@ -40,7 +39,13 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
         ]);
 
         let memos: MemosState = savedMemos ? JSON.parse(savedMemos) : {};
-        let viewDate = savedWidgetDate ? new Date(savedWidgetDate) : new Date();
+        
+        let viewDate = new Date();
+        await Promise.all([
+          AsyncStorage.removeItem(WIDGET_DATE_KEY),
+          AsyncStorage.removeItem(WIDGET_NAV_TIMESTAMP_KEY)
+        ]);
+
         const settings: AppSettings = {
           fontSizeIndex: savedFontSize ? parseInt(savedFontSize, 10) : 1,
           alignmentVertical: (savedAlignmentV as 'top' | 'center') || 'top',
@@ -89,7 +94,19 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
             viewDate.setMonth(viewDate.getMonth() + 1);
           }
           
-          AsyncStorage.setItem(WIDGET_DATE_KEY, viewDate.toISOString());
+          const now = new Date();
+          if (viewDate.getFullYear() === now.getFullYear() && viewDate.getMonth() === now.getMonth()) {
+            await Promise.all([
+              AsyncStorage.removeItem(WIDGET_DATE_KEY),
+              AsyncStorage.removeItem(WIDGET_NAV_TIMESTAMP_KEY)
+            ]);
+          } else {
+            await Promise.all([
+              AsyncStorage.setItem(WIDGET_DATE_KEY, viewDate.toISOString()),
+              AsyncStorage.setItem(WIDGET_NAV_TIMESTAMP_KEY, Date.now().toString())
+            ]);
+          }
+          
           await render(props, viewDate, memos, settings);
         } else if (props.clickAction === 'OPEN_SETTINGS_APP') {
           const url = 'calendarapp://?source=settings';

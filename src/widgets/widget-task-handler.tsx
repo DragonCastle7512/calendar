@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
-import { Linking } from 'react-native';
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 import {
   FIXED_ANNIVERSARIES,
@@ -59,13 +58,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
         break;
       }
       case 'WIDGET_CLICK':
-        if (props.clickAction && props.clickAction.startsWith('OPEN_DATE')) {
-          const clickedDate = props.clickActionData?.date;
-          if (clickedDate) {
-            const url = `calendarapp://?date=${clickedDate}&source=widget`;
-            await Linking.openURL(url);
-          }
-        } else if (props.clickAction === 'PREV_MONTH' || props.clickAction === 'NEXT_MONTH') {
+        if (props.clickAction === 'PREV_MONTH' || props.clickAction === 'NEXT_MONTH') {
           const [savedMemos, savedWidgetDate, savedFontSize, savedAlignmentV, savedAlignmentH, savedShowHolidays, savedShowOtherMonths, savedHighlightType] = await Promise.all([
             AsyncStorage.getItem(MEMO_STORAGE_KEY),
             AsyncStorage.getItem(WIDGET_DATE_KEY),
@@ -108,9 +101,6 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
           }
           
           await render(props, viewDate, memos, settings);
-        } else if (props.clickAction === 'OPEN_SETTINGS_APP') {
-          const url = 'calendarapp://?source=settings';
-          await Linking.openURL(url);
         }
         break;
       default:

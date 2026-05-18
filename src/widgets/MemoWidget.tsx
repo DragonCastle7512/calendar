@@ -69,7 +69,7 @@ export function MemoWidget({
         borderBottomWidth: 1,
         borderBottomColor: '#dfdfdf'
       }}>
-        <FlexWidget clickAction="OPEN_SETTINGS_APP" style={{ marginLeft: 10, padding: 6, borderRadius: 20 }}>
+        <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri: 'calendarapp://?source=settings' }} style={{ marginLeft: 10, padding: 6, borderRadius: 20 }}>
           <SvgWidget
             svg={SETTINGS_ICON_SVG}
             style={{ height: 22, width: 22 }}
@@ -151,8 +151,8 @@ export function MemoWidget({
               return (
                 <FlexWidget
                   key={di}
-                  clickAction={showDateContent ? `OPEN_DATE:${dateKey}` : undefined}
-                  clickActionData={showDateContent ? { date: dateKey, renderTime } : undefined}
+                  clickAction={showDateContent ? 'OPEN_URI' : undefined}
+                  clickActionData={showDateContent ? { uri: `calendarapp://?date=${dateKey}&source=widget` } : undefined}
                   style={{
                     flex: 1,
                     width: 'match_parent',

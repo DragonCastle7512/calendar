@@ -1,7 +1,7 @@
 "use no memo";
 
 import React from 'react';
-import { FlexWidget, OverlapWidget, SvgWidget, TextWidget } from 'react-native-android-widget';
+import { FlexWidget, OverlapWidget, SvgWidget, TextWidget, type ColorProp } from 'react-native-android-widget';
 
 import { AppSettings } from '../hooks/useSettings';
 import { MemosState } from '../types/calendar';
@@ -36,6 +36,7 @@ export function MemoWidget({
   const { fontSizeIndex, alignmentVertical, alignmentHorizontal, showHolidays, showOtherMonths, memoHighlightType } = settings;
   const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
   const alpha = '4D';
+  const transparentColor: ColorProp = '#00000000';
 
   // Font size scaling
   const scales = [0.85, 1, 1.15];
@@ -76,14 +77,22 @@ export function MemoWidget({
           />
         </FlexWidget>
         <FlexWidget style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <FlexWidget clickAction="PREV_MONTH" style={{ paddingHorizontal: 15, paddingVertical: 5 }}>
+          <FlexWidget
+            clickAction="PREV_MONTH"
+            clickActionData={{ baseYear: year, baseMonth: month, renderTime }}
+            style={{ paddingHorizontal: 15, paddingVertical: 5 }}
+          >
             <TextWidget text="<" style={{ fontSize: 18, color: '#cacaca', fontWeight: 'bold' }} />
           </FlexWidget>
           <TextWidget 
             text={`${year}년 ${month + 1}월`} 
             style={{ fontSize: 15, fontWeight: 'bold', color: '#000000', marginHorizontal: 15 }} 
           />
-          <FlexWidget clickAction="NEXT_MONTH" style={{ paddingHorizontal: 15, paddingVertical: 5 }}>
+          <FlexWidget
+            clickAction="NEXT_MONTH"
+            clickActionData={{ baseYear: year, baseMonth: month, renderTime }}
+            style={{ paddingHorizontal: 15, paddingVertical: 5 }}
+          >
             <TextWidget text=">" style={{ fontSize: 18, color: '#cacaca', fontWeight: 'bold' }} />
           </FlexWidget>
         </FlexWidget>
@@ -175,9 +184,9 @@ export function MemoWidget({
                             style={{
                               fontSize: 11,
                               fontWeight: '700',
-                              minWidth: 24,
-                              color: dateColor,
-                              backgroundColor: isToday && isCurrentMonth ? '#3f6cbe' : 'transparent',
+                              width: 24,
+                              color: dateColor as ColorProp,
+                              backgroundColor: isToday && isCurrentMonth ? '#3f6cbe' : transparentColor,
                               borderRadius: 12,
                               paddingHorizontal: 5,
                               paddingTop: 1,
@@ -190,7 +199,7 @@ export function MemoWidget({
                           {dayMemos.length > dayMemoLimit && (
                             <TextWidget 
                               text={`+${dayMemos.length - dayMemoLimit}`} 
-                              style={{ fontSize: 9, color: isCurrentMonth ? '#8A8A8A' : `#8A8A8A${alpha}`, textAlign: 'right' }} 
+                              style={{ fontSize: 9, color: (isCurrentMonth ? '#8A8A8A' : `#8A8A8A${alpha}`) as ColorProp, textAlign: 'right' }} 
                             />
                           )}
                         </FlexWidget>
@@ -199,7 +208,7 @@ export function MemoWidget({
                       {displayName && (
                         <TextWidget 
                           text={displayName} 
-                          style={{ fontSize: 6, color: textNameColor, textAlign: 'center', width: 'match_parent'}} 
+                          style={{ fontSize: 6, color: textNameColor as ColorProp, textAlign: 'center', width: 'match_parent'}} 
                           maxLines={1} 
                         />
                       )}
@@ -209,12 +218,14 @@ export function MemoWidget({
                         width: 'match_parent', 
                         flexDirection: 'column',
                         justifyContent: alignmentVertical === 'center' ? 'center' : 'flex-start',
-                        alignItems: memoHighlightType === 'full' ? 'stretch' : (alignmentHorizontal === 'center' ? 'center' : 'flex-start')
+                        alignItems: alignmentHorizontal === 'center' ? 'center' : 'flex-start'
                       }}>
                         {dayMemos.slice(0, dayMemoLimit).map((memo) => {
                           const memoBg = memo.color || '#C8F0C4';
                           const isBgColorHex = memoBg.startsWith('#');
-                          const finalMemoBg = (isCurrentMonth || !isBgColorHex) ? memoBg : `${memoBg}${alpha}`;
+                          const finalMemoBg = memoBg === 'transparent'
+                            ? transparentColor
+                            : ((isCurrentMonth || !isBgColorHex) ? memoBg : `${memoBg}${alpha}`) as ColorProp;
                           const memoTextColor = isCurrentMonth ? '#000000' : `#000000${alpha}`;
                           return (
                             <FlexWidget 
@@ -232,7 +243,7 @@ export function MemoWidget({
                                 text={memo.title} 
                                 style={{ 
                                   fontSize: 9 * scale, 
-                                  color: memoTextColor, 
+                                  color: memoTextColor as ColorProp, 
                                   fontWeight: '500',
                                   textAlign: alignmentHorizontal === 'center' ? 'center' : 'left'
                                 }} 

@@ -2,7 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
 import { InteractionManager, Platform } from 'react-native';
 import { requestWidgetUpdate } from 'react-native-android-widget';
-import { FIXED_ANNIVERSARIES, OFFLINE_HOLIDAYS, WIDGET_DATE_KEY, WIDGET_NAV_TIMESTAMP_KEY } from '../constants/calendar';
+import {
+  FIXED_ANNIVERSARIES,
+  OFFLINE_HOLIDAYS,
+  WIDGET_DATE_KEY,
+  WIDGET_NAV_ACTION_KEY,
+  WIDGET_NAV_STARTED_KEY,
+  WIDGET_NAV_TIMESTAMP_KEY,
+  WIDGET_RENDER_TIME_KEY
+} from '../constants/calendar';
 import { MemosState } from '../types/calendar';
 import { getDateKey } from '../utils/date';
 import { getLunarHoliday } from '../utils/holiday';
@@ -29,14 +37,16 @@ export const triggerWidgetUpdate = async (data: WidgetUpdateData) => {
     if (isCurrentMonth) {
       await Promise.all([
         AsyncStorage.removeItem(WIDGET_DATE_KEY),
-        AsyncStorage.removeItem(WIDGET_NAV_TIMESTAMP_KEY)
+        AsyncStorage.removeItem(WIDGET_NAV_TIMESTAMP_KEY),
+        AsyncStorage.removeItem(WIDGET_NAV_ACTION_KEY),
+        AsyncStorage.removeItem(WIDGET_NAV_STARTED_KEY),
+        AsyncStorage.removeItem(WIDGET_RENDER_TIME_KEY)
       ]);
     } else {
       await AsyncStorage.setItem(WIDGET_DATE_KEY, data.viewDate.toISOString());
       await AsyncStorage.setItem(WIDGET_NAV_TIMESTAMP_KEY, Date.now().toString());
     }
   } catch (e) {
-    console.log('[DEBUG] Failed to sync widget date:', e);
   }
 
   InteractionManager.runAfterInteractions(() => {
@@ -51,6 +61,8 @@ export const triggerWidgetUpdate = async (data: WidgetUpdateData) => {
         const year = viewDate.getFullYear();
         const month = viewDate.getMonth();
         const todayStr = getDateKey(new Date());
+        const renderTime = Date.now();
+        await AsyncStorage.setItem(WIDGET_RENDER_TIME_KEY, renderTime.toString());
 
         const firstDay = new Date(year, month, 1).getDay();
         const lastDate = new Date(year, month + 1, 0).getDate();
@@ -85,7 +97,7 @@ export const triggerWidgetUpdate = async (data: WidgetUpdateData) => {
               todayStr={todayStr} 
               holidays={widgetHolidays} 
               anniversaries={widgetAnniversaries} 
-              renderTime={Date.now()}
+              renderTime={renderTime}
               settings={settings}
               widgetHeight={widgetInfo.height}
             />
@@ -93,7 +105,6 @@ export const triggerWidgetUpdate = async (data: WidgetUpdateData) => {
           widgetNotFound: () => {}
         });
       } catch (e) {
-        console.log('[DEBUG] Widget Update Error:', e);
       }
     }, 50);
   });

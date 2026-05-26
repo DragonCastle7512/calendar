@@ -10,11 +10,12 @@ public class Memo extends RNWidgetProvider {
   public void onReceive(Context context, Intent intent) {
     String action = intent.getAction();
 
-    if (Intent.ACTION_USER_PRESENT.equals(action) || 
+    if (Intent.ACTION_USER_PRESENT.equals(action) ||
+        Intent.ACTION_SCREEN_ON.equals(action) ||
         Intent.ACTION_TIME_CHANGED.equals(action) || 
         Intent.ACTION_TIMEZONE_CHANGED.equals(action) ||
         "android.intent.action.TIME_SET".equals(action)) {
-      WidgetUpdateScheduler.INSTANCE.requestWidgetUpdate(context);
+      WidgetUpdateScheduler.INSTANCE.requestWidgetResetToCurrentMonth(context, action);
     }
     
     super.onReceive(context, intent);

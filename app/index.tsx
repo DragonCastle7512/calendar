@@ -151,7 +151,8 @@ export default function CalendarMemoApp() {
       Animated.timing(translateX, { toValue: targetX, duration: 150, useNativeDriver: true }),
       Animated.timing(opacity, { toValue: 0, duration: 150, useNativeDriver: true })
     ]).start(() => {
-      setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + offset, 1));
+      const nextViewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + offset, 1);
+      setViewDate(nextViewDate);
       setSelectedDate(null);
       setWidgetSelectedDate(null);
       translateX.setValue(-targetX);

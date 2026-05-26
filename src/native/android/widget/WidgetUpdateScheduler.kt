@@ -17,7 +17,9 @@ object WidgetUpdateScheduler {
   private var userPresentReceiver: BroadcastReceiver? = null
 
   fun registerUserPresentReceiver(context: Context) {
-    if (userPresentReceiver != null) return
+    if (userPresentReceiver != null) {
+      return
+    }
 
     val appContext = context.applicationContext
     val filter = IntentFilter().apply {
@@ -30,7 +32,7 @@ object WidgetUpdateScheduler {
         val action = intent?.action
 
         if (Intent.ACTION_USER_PRESENT == action || Intent.ACTION_SCREEN_ON == action) {
-          requestWidgetUpdate(appContext)
+          requestWidgetResetToCurrentMonth(appContext, action ?: "dynamic")
         }
       }
     }
@@ -91,6 +93,26 @@ object WidgetUpdateScheduler {
       putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
     }
     context.sendBroadcast(updateIntent)
+  }
+
+  fun requestWidgetResetToCurrentMonth(context: Context, reason: String) {
+    val appWidgetManager = AppWidgetManager.getInstance(context)
+    val provider = ComponentName(context, Memo::class.java)
+    val appWidgetIds = appWidgetManager.getAppWidgetIds(provider)
+    if (appWidgetIds.isEmpty()) return
+
+    appWidgetIds.forEach { widgetId ->
+      val resetIntent = Intent(context, Memo::class.java).apply {
+        action = context.packageName + ".WIDGET_CLICK"
+        putExtra("widgetId", widgetId)
+        putExtra("clickAction", "RESET_TO_CURRENT_MONTH")
+        putExtra("clickActionData", android.os.Bundle().apply {
+          putString("reason", reason)
+          putLong("requestedAt", System.currentTimeMillis())
+        })
+      }
+      context.sendBroadcast(resetIntent)
+    }
   }
 
   private fun hasWidgets(context: Context): Boolean {

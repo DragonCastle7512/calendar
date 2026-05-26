@@ -18,7 +18,7 @@ class MidnightWidgetUpdateReceiver : BroadcastReceiver() {
       Intent.ACTION_USER_PRESENT,
       "android.intent.action.TIME_SET",
       Intent.ACTION_MY_PACKAGE_REPLACED -> {
-        WidgetUpdateScheduler.requestWidgetUpdate(context)
+        WidgetUpdateScheduler.requestWidgetResetToCurrentMonth(context, action ?: "receiver")
         WidgetUpdateScheduler.scheduleNextMidnight(context)
       }
     }

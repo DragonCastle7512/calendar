@@ -8,17 +8,17 @@ import {
   OFFLINE_HOLIDAYS,
   WIDGET_ALIGNMENT_HORIZONTAL_KEY,
   WIDGET_ALIGNMENT_VERTICAL_KEY,
-  WIDGET_FONT_SIZE_KEY,
-  WIDGET_SHOW_HOLIDAYS_KEY,
-  WIDGET_SHOW_OTHER_MONTHS_KEY,
-  WIDGET_MEMO_HIGHLIGHT_TYPE_KEY,
   WIDGET_DATE_KEY,
-  WIDGET_NAV_TIMESTAMP_KEY,
+  WIDGET_FONT_SIZE_KEY,
+  WIDGET_MEMO_HIGHLIGHT_TYPE_KEY,
   WIDGET_NAV_ACTION_KEY,
-  WIDGET_NAV_STARTED_KEY,
-  WIDGET_RENDER_TIME_KEY,
   WIDGET_NAV_DEBOUNCE_MS,
-  WIDGET_NAV_STALE_MS
+  WIDGET_NAV_STALE_MS,
+  WIDGET_NAV_STARTED_KEY,
+  WIDGET_NAV_TIMESTAMP_KEY,
+  WIDGET_RENDER_TIME_KEY,
+  WIDGET_SHOW_HOLIDAYS_KEY,
+  WIDGET_SHOW_OTHER_MONTHS_KEY
 } from '../constants/calendar';
 import { AppSettings } from '../hooks/useSettings';
 import { MemosState } from '../types/calendar';
@@ -66,7 +66,18 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
       }
       case 'WIDGET_UPDATE':
       case 'WIDGET_RESIZED': {
-        const [savedMemos, savedWidgetDate, savedNavTimestamp, savedFontSize, savedAlignmentV, savedAlignmentH, savedShowHolidays, savedShowOtherMonths, savedHighlightType] = await Promise.all([
+        const [
+          savedMemos, 
+          savedWidgetDate, 
+          savedNavTimestamp, 
+          savedFontSize, 
+          savedAlignmentV, 
+          savedAlignmentH, 
+          savedShowHolidays, 
+          savedShowOtherMonths, 
+          savedHighlightType,
+          savedRenderTime
+        ] = await Promise.all([
           AsyncStorage.getItem(MEMO_STORAGE_KEY),
           AsyncStorage.getItem(WIDGET_DATE_KEY),
           AsyncStorage.getItem(WIDGET_NAV_TIMESTAMP_KEY),
@@ -75,16 +86,40 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
           AsyncStorage.getItem(WIDGET_ALIGNMENT_HORIZONTAL_KEY),
           AsyncStorage.getItem(WIDGET_SHOW_HOLIDAYS_KEY),
           AsyncStorage.getItem(WIDGET_SHOW_OTHER_MONTHS_KEY),
-          AsyncStorage.getItem(WIDGET_MEMO_HIGHLIGHT_TYPE_KEY)
+          AsyncStorage.getItem(WIDGET_MEMO_HIGHLIGHT_TYPE_KEY),
+          AsyncStorage.getItem(WIDGET_RENDER_TIME_KEY)
         ]);
+
+        let currentWidgetDate = savedWidgetDate;
+        if (props.widgetAction === 'WIDGET_UPDATE') {
+          const now = new Date();
+          const lastRenderAt = savedRenderTime ? parseInt(savedRenderTime, 10) : 0;
+          const isNewDay = lastRenderAt > 0 ? getDateKey(new Date(lastRenderAt)) !== getDateKey(now) : true;
+          const isViewingOtherMonth = !!savedWidgetDate;
+
+          if (!isNewDay && !isViewingOtherMonth) {
+            break;
+          }
+
+          if (isNewDay || isViewingOtherMonth) {
+            currentWidgetDate = null;
+            await Promise.all([
+              AsyncStorage.removeItem(WIDGET_DATE_KEY),
+              AsyncStorage.removeItem(WIDGET_NAV_TIMESTAMP_KEY),
+              AsyncStorage.removeItem(WIDGET_NAV_ACTION_KEY),
+              AsyncStorage.removeItem(WIDGET_NAV_STARTED_KEY),
+              AsyncStorage.removeItem(WIDGET_RENDER_TIME_KEY)
+            ]);
+          }
+        }
 
         let memos: MemosState = savedMemos ? JSON.parse(savedMemos) : {};
         const lastNavAt = savedNavTimestamp ? parseInt(savedNavTimestamp, 10) : 0;
         const timeSinceLastNav = Number.isFinite(lastNavAt) && lastNavAt > 0
           ? Date.now() - lastNavAt
           : Infinity;
-        let viewDate = savedWidgetDate && timeSinceLastNav <= WIDGET_NAV_STALE_MS
-          ? new Date(savedWidgetDate)
+        let viewDate = currentWidgetDate && timeSinceLastNav <= WIDGET_NAV_STALE_MS
+          ? new Date(currentWidgetDate)
           : new Date();
         if (isNaN(viewDate.getTime())) {
           viewDate = new Date();

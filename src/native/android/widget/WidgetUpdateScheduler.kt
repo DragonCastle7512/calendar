@@ -32,7 +32,7 @@ object WidgetUpdateScheduler {
         val action = intent?.action
 
         if (Intent.ACTION_USER_PRESENT == action || Intent.ACTION_SCREEN_ON == action) {
-          requestWidgetResetToCurrentMonth(appContext, action ?: "dynamic")
+          requestWidgetUpdate(appContext)
         }
       }
     }

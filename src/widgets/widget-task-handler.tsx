@@ -17,6 +17,7 @@ import {
   WIDGET_NAV_STARTED_KEY,
   WIDGET_NAV_TIMESTAMP_KEY,
   WIDGET_RENDER_TIME_KEY,
+  WIDGET_SETTINGS_KEY,
   WIDGET_SHOW_HOLIDAYS_KEY,
   WIDGET_SHOW_OTHER_MONTHS_KEY
 } from '../constants/calendar';
@@ -26,20 +27,56 @@ import { getDateKey } from '../utils/date';
 import { getLunarHoliday } from '../utils/holiday';
 import { MemoWidget } from './MemoWidget';
 
+async function getWidgetSettings(): Promise<AppSettings> {
+  const unified = await AsyncStorage.getItem(WIDGET_SETTINGS_KEY);
+  if (unified) {
+    try {
+      return JSON.parse(unified);
+    } catch (e) {
+      console.error('Failed to parse unified widget settings', e);
+    }
+  }
+
+  // 값이 없는 경우 마이그레이션
+  const [
+    savedFontSize,
+    savedAlignmentV,
+    savedAlignmentH,
+    savedShowHolidays,
+    savedShowOtherMonths,
+    savedHighlightType
+  ] = await Promise.all([
+    AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY),
+    AsyncStorage.getItem(WIDGET_ALIGNMENT_VERTICAL_KEY),
+    AsyncStorage.getItem(WIDGET_ALIGNMENT_HORIZONTAL_KEY),
+    AsyncStorage.getItem(WIDGET_SHOW_HOLIDAYS_KEY),
+    AsyncStorage.getItem(WIDGET_SHOW_OTHER_MONTHS_KEY),
+    AsyncStorage.getItem(WIDGET_MEMO_HIGHLIGHT_TYPE_KEY)
+  ]);
+
+  const settings: AppSettings = {
+    fontSizeIndex: savedFontSize ? parseInt(savedFontSize, 10) : 1,
+    alignmentVertical: (savedAlignmentV as 'top' | 'center') || 'top',
+    alignmentHorizontal: (savedAlignmentH as 'left' | 'center') || 'left',
+    showHolidays: savedShowHolidays !== null ? savedShowHolidays === 'true' : true,
+    showOtherMonths: savedShowOtherMonths !== null ? savedShowOtherMonths === 'true' : true,
+    memoHighlightType: (savedHighlightType as 'full' | 'text') || 'full',
+  };
+
+  await AsyncStorage.setItem(WIDGET_SETTINGS_KEY, JSON.stringify(settings));
+
+  return settings;
+}
+
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
   try {
     const taskStartedAt = Date.now();
 
     switch (props.widgetAction) {
       case 'WIDGET_ADDED': {
-        const [savedMemos, savedFontSize, savedAlignmentV, savedAlignmentH, savedShowHolidays, savedShowOtherMonths, savedHighlightType] = await Promise.all([
+        const [savedMemos, settings] = await Promise.all([
           AsyncStorage.getItem(MEMO_STORAGE_KEY),
-          AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY),
-          AsyncStorage.getItem(WIDGET_ALIGNMENT_VERTICAL_KEY),
-          AsyncStorage.getItem(WIDGET_ALIGNMENT_HORIZONTAL_KEY),
-          AsyncStorage.getItem(WIDGET_SHOW_HOLIDAYS_KEY),
-          AsyncStorage.getItem(WIDGET_SHOW_OTHER_MONTHS_KEY),
-          AsyncStorage.getItem(WIDGET_MEMO_HIGHLIGHT_TYPE_KEY)
+          getWidgetSettings()
         ]);
 
         let memos: MemosState = savedMemos ? JSON.parse(savedMemos) : {};
@@ -52,15 +89,6 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
           AsyncStorage.removeItem(WIDGET_RENDER_TIME_KEY)
         ]);
 
-        const settings: AppSettings = {
-          fontSizeIndex: savedFontSize ? parseInt(savedFontSize, 10) : 1,
-          alignmentVertical: (savedAlignmentV as 'top' | 'center') || 'top',
-          alignmentHorizontal: (savedAlignmentH as 'left' | 'center') || 'left',
-          showHolidays: savedShowHolidays !== null ? savedShowHolidays === 'true' : true,
-          showOtherMonths: savedShowOtherMonths !== null ? savedShowOtherMonths === 'true' : true,
-          memoHighlightType: (savedHighlightType as 'full' | 'text') || 'full',
-        };
-
         await render(props, viewDate, memos, settings);
         break;
       }
@@ -70,23 +98,13 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
           savedMemos, 
           savedWidgetDate, 
           savedNavTimestamp, 
-          savedFontSize, 
-          savedAlignmentV, 
-          savedAlignmentH, 
-          savedShowHolidays, 
-          savedShowOtherMonths, 
-          savedHighlightType,
+          settings,
           savedRenderTime
         ] = await Promise.all([
           AsyncStorage.getItem(MEMO_STORAGE_KEY),
           AsyncStorage.getItem(WIDGET_DATE_KEY),
           AsyncStorage.getItem(WIDGET_NAV_TIMESTAMP_KEY),
-          AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY),
-          AsyncStorage.getItem(WIDGET_ALIGNMENT_VERTICAL_KEY),
-          AsyncStorage.getItem(WIDGET_ALIGNMENT_HORIZONTAL_KEY),
-          AsyncStorage.getItem(WIDGET_SHOW_HOLIDAYS_KEY),
-          AsyncStorage.getItem(WIDGET_SHOW_OTHER_MONTHS_KEY),
-          AsyncStorage.getItem(WIDGET_MEMO_HIGHLIGHT_TYPE_KEY),
+          getWidgetSettings(),
           AsyncStorage.getItem(WIDGET_RENDER_TIME_KEY)
         ]);
 
@@ -130,28 +148,14 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
           break;
         }
 
-        const settings: AppSettings = {
-          fontSizeIndex: savedFontSize ? parseInt(savedFontSize, 10) : 1,
-          alignmentVertical: (savedAlignmentV as 'top' | 'center') || 'top',
-          alignmentHorizontal: (savedAlignmentH as 'left' | 'center') || 'left',
-          showHolidays: savedShowHolidays !== null ? savedShowHolidays === 'true' : true,
-          showOtherMonths: savedShowOtherMonths !== null ? savedShowOtherMonths === 'true' : true,
-          memoHighlightType: (savedHighlightType as 'full' | 'text') || 'full',
-        };
-
         await render(props, viewDate, memos, settings);
         break;
       }
       case 'WIDGET_CLICK':
         if (props.clickAction === 'RESET_TO_CURRENT_MONTH') {
-          const [savedMemos, savedFontSize, savedAlignmentV, savedAlignmentH, savedShowHolidays, savedShowOtherMonths, savedHighlightType] = await Promise.all([
+          const [savedMemos, settings] = await Promise.all([
             AsyncStorage.getItem(MEMO_STORAGE_KEY),
-            AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY),
-            AsyncStorage.getItem(WIDGET_ALIGNMENT_VERTICAL_KEY),
-            AsyncStorage.getItem(WIDGET_ALIGNMENT_HORIZONTAL_KEY),
-            AsyncStorage.getItem(WIDGET_SHOW_HOLIDAYS_KEY),
-            AsyncStorage.getItem(WIDGET_SHOW_OTHER_MONTHS_KEY),
-            AsyncStorage.getItem(WIDGET_MEMO_HIGHLIGHT_TYPE_KEY)
+            getWidgetSettings()
           ]);
 
           let memos: MemosState = savedMemos ? JSON.parse(savedMemos) : {};
@@ -164,18 +168,9 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
             AsyncStorage.removeItem(WIDGET_RENDER_TIME_KEY)
           ]);
 
-          const settings: AppSettings = {
-            fontSizeIndex: savedFontSize ? parseInt(savedFontSize, 10) : 1,
-            alignmentVertical: (savedAlignmentV as 'top' | 'center') || 'top',
-            alignmentHorizontal: (savedAlignmentH as 'left' | 'center') || 'left',
-            showHolidays: savedShowHolidays !== null ? savedShowHolidays === 'true' : true,
-            showOtherMonths: savedShowOtherMonths !== null ? savedShowOtherMonths === 'true' : true,
-            memoHighlightType: (savedHighlightType as 'full' | 'text') || 'full',
-          };
-
           await render(props, viewDate, memos, settings);
-        } else
-        if (props.clickAction === 'PREV_MONTH' || props.clickAction === 'NEXT_MONTH') {
+        }
+        else if (props.clickAction === 'PREV_MONTH' || props.clickAction === 'NEXT_MONTH') {
           await AsyncStorage.setItem(WIDGET_NAV_STARTED_KEY, taskStartedAt.toString());
           const [savedMemos, savedWidgetDate, savedNavTimestamp, savedNavAction, savedFontSize, savedAlignmentV, savedAlignmentH, savedShowHolidays, savedShowOtherMonths, savedHighlightType] = await Promise.all([
             AsyncStorage.getItem(MEMO_STORAGE_KEY),

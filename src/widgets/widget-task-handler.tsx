@@ -172,17 +172,12 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
         }
         else if (props.clickAction === 'PREV_MONTH' || props.clickAction === 'NEXT_MONTH') {
           await AsyncStorage.setItem(WIDGET_NAV_STARTED_KEY, taskStartedAt.toString());
-          const [savedMemos, savedWidgetDate, savedNavTimestamp, savedNavAction, savedFontSize, savedAlignmentV, savedAlignmentH, savedShowHolidays, savedShowOtherMonths, savedHighlightType] = await Promise.all([
+          const [savedMemos, savedWidgetDate, savedNavTimestamp, savedNavAction, settings] = await Promise.all([
             AsyncStorage.getItem(MEMO_STORAGE_KEY),
             AsyncStorage.getItem(WIDGET_DATE_KEY),
             AsyncStorage.getItem(WIDGET_NAV_TIMESTAMP_KEY),
             AsyncStorage.getItem(WIDGET_NAV_ACTION_KEY),
-            AsyncStorage.getItem(WIDGET_FONT_SIZE_KEY),
-            AsyncStorage.getItem(WIDGET_ALIGNMENT_VERTICAL_KEY),
-            AsyncStorage.getItem(WIDGET_ALIGNMENT_HORIZONTAL_KEY),
-            AsyncStorage.getItem(WIDGET_SHOW_HOLIDAYS_KEY),
-            AsyncStorage.getItem(WIDGET_SHOW_OTHER_MONTHS_KEY),
-            AsyncStorage.getItem(WIDGET_MEMO_HIGHLIGHT_TYPE_KEY)
+            getWidgetSettings()
           ]);
 
           const requestTime = Date.now();
@@ -225,14 +220,6 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
           if (isNaN(viewDate.getTime())) {
             viewDate = new Date();
           }
-          const settings: AppSettings = {
-            fontSizeIndex: savedFontSize ? parseInt(savedFontSize, 10) : 1,
-            alignmentVertical: (savedAlignmentV as 'top' | 'center') || 'top',
-            alignmentHorizontal: (savedAlignmentH as 'left' | 'center') || 'left',
-            showHolidays: savedShowHolidays !== null ? savedShowHolidays === 'true' : true,
-            showOtherMonths: savedShowOtherMonths !== null ? savedShowOtherMonths === 'true' : true,
-            memoHighlightType: (savedHighlightType as 'full' | 'text') || 'full',
-          };
 
           if (props.clickAction === 'PREV_MONTH') {
             viewDate.setMonth(viewDate.getMonth() - 1);

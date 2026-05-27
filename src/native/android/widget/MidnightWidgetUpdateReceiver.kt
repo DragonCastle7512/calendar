@@ -1,4 +1,4 @@
-package com.dstle.calendar.widget
+package com.dstle.calendar.widget;
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -15,7 +15,6 @@ class MidnightWidgetUpdateReceiver : BroadcastReceiver() {
       }
       Intent.ACTION_TIME_CHANGED,
       Intent.ACTION_TIMEZONE_CHANGED,
-      Intent.ACTION_USER_PRESENT,
       "android.intent.action.TIME_SET",
       Intent.ACTION_MY_PACKAGE_REPLACED -> {
         WidgetUpdateScheduler.requestWidgetResetToCurrentMonth(context, action ?: "receiver")

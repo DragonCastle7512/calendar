@@ -6,9 +6,8 @@ const {
   AndroidConfig,
 } = require('expo/config-plugins');
 
+const MIDNIGHT_RECEIVER_NAME = 'com.dstle.calendar.widget.MidnightWidgetUpdateReceiver';
 const WIDGET_PACKAGE = 'com.dstle.calendar.widget';
-const RECEIVER_NAME = '.widget.MidnightWidgetUpdateReceiver';
-const WIDGET_RECEIVER_NAME = '.widget.Memo';
 
 function ensurePermission(manifest, name) {
   manifest.manifest['uses-permission'] = manifest.manifest['uses-permission'] || [];
@@ -16,66 +15,40 @@ function ensurePermission(manifest, name) {
   if (!has) manifest.manifest['uses-permission'].push({ $: { 'android:name': name } });
 }
 
-function ensureReceiver(manifest) {
+function ensureMidnightReceiver(manifest) {
   const app = AndroidConfig.Manifest.getMainApplicationOrThrow(manifest);
   app.receiver = app.receiver || [];
   
-  // Update MidnightWidgetUpdateReceiver
+  // Find if it already exists
   let midnightReceiver = app.receiver.find((r) => 
-    r.$['android:name'] === RECEIVER_NAME || r.$['android:name'].endsWith(RECEIVER_NAME)
+    r.$['android:name'] === MIDNIGHT_RECEIVER_NAME || 
+    r.$['android:name'] === '.widget.MidnightWidgetUpdateReceiver'
   );
+  
   if (!midnightReceiver) {
     midnightReceiver = {
       $: {
-        'android:name': RECEIVER_NAME,
+        'android:name': MIDNIGHT_RECEIVER_NAME,
         'android:exported': 'true',
         'android:enabled': 'true',
         'android:directBootAware': 'true',
       },
-      'intent-filter': [],
+      'intent-filter': [
+        {
+          $: { 'android:priority': '999' },
+          action: [
+            { $: { 'android:name': 'com.dstle.calendar.ACTION_MIDNIGHT_WIDGET_UPDATE' } },
+            { $: { 'android:name': 'android.intent.action.TIME_SET' } },
+            { $: { 'android:name': 'android.intent.action.TIMEZONE_CHANGED' } },
+            { $: { 'android:name': 'android.intent.action.MY_PACKAGE_REPLACED' } },
+          ],
+        },
+      ],
     };
     app.receiver.push(midnightReceiver);
   } else {
-    midnightReceiver.$['android:exported'] = 'true';
-    midnightReceiver.$['android:enabled'] = 'true';
-  }
-  
-  midnightReceiver['intent-filter'] = [
-    {
-      $: { 'android:priority': '999' },
-      action: [
-        { $: { 'android:name': 'com.dstle.calendar.ACTION_MIDNIGHT_WIDGET_UPDATE' } },
-        { $: { 'android:name': 'android.intent.action.TIME_SET' } },
-        { $: { 'android:name': 'android.intent.action.TIMEZONE_CHANGED' } },
-        { $: { 'android:name': 'android.intent.action.USER_PRESENT' } },
-        { $: { 'android:name': 'android.intent.action.SCREEN_ON' } },
-        { $: { 'android:name': 'android.intent.action.SCREEN_OFF' } },
-        { $: { 'android:name': 'android.intent.action.MY_PACKAGE_REPLACED' } },
-      ],
-    },
-  ];
-
-  // Update Memo (Widget) Receiver to also catch system events
-  let memoReceiver = app.receiver.find((r) => 
-    r.$['android:name'] === WIDGET_RECEIVER_NAME || r.$['android:name'].endsWith(WIDGET_RECEIVER_NAME)
-  );
-  if (memoReceiver) {
-    if (!memoReceiver['intent-filter']) memoReceiver['intent-filter'] = [];
-    
-    memoReceiver.$['android:directBootAware'] = 'true';
-    memoReceiver.$['android:exported'] = 'true';
-    memoReceiver.$['android:enabled'] = 'true';
-    
-    // Add system actions to existing widget intent-filter or add a new one
-    memoReceiver['intent-filter'].push({
-      $: { 'android:priority': '999' },
-      action: [
-        { $: { 'android:name': 'android.intent.action.USER_PRESENT' } },
-        { $: { 'android:name': 'android.intent.action.TIME_SET' } },
-        { $: { 'android:name': 'android.intent.action.TIMEZONE_CHANGED' } },
-        { $: { 'android:name': 'android.intent.action.SCREEN_ON' } },
-      ],
-    });
+    // Ensure it uses the full package name
+    midnightReceiver.$['android:name'] = MIDNIGHT_RECEIVER_NAME;
   }
 }
 
@@ -98,24 +71,35 @@ function readTemplate(fileName) {
 function patchMainApplication(filePath) {
   if (!fs.existsSync(filePath)) return;
   let content = fs.readFileSync(filePath, 'utf8');
+  
+  // Imports
   if (!content.includes('import com.dstle.calendar.widget.WidgetUpdateScheduler')) {
+    // Remove old imports if they exist (from previous versions of this plugin)
+    content = content.replace('import com.dstle.calendar.WidgetUpdateScheduler\n', '');
+    content = content.replace('import com.dstle.calendar.WidgetPackage\n', '');
+
     content = content.replace(
       'import com.facebook.react.defaults.DefaultReactNativeHost',
-      'import com.facebook.react.defaults.DefaultReactNativeHost\nimport com.dstle.calendar.widget.WidgetUpdateScheduler'
+      'import com.facebook.react.defaults.DefaultReactNativeHost\nimport com.dstle.calendar.widget.WidgetUpdateScheduler\nimport com.dstle.calendar.widget.WidgetPackage'
     );
   }
+  
+  // Register package
+  if (!content.includes('add(WidgetPackage())')) {
+    content = content.replace(
+      '// add(MyReactNativePackage())',
+      '// add(MyReactNativePackage())\n              add(WidgetPackage())'
+    );
+  }
+
+  // Lifecycle calls
   if (!content.includes('WidgetUpdateScheduler.scheduleNextMidnight(this)')) {
     content = content.replace(
       'ApplicationLifecycleDispatcher.onApplicationCreate(this)',
       'ApplicationLifecycleDispatcher.onApplicationCreate(this)\n    WidgetUpdateScheduler.scheduleNextMidnight(this)'
     );
   }
-  if (!content.includes('WidgetUpdateScheduler.registerUserPresentReceiver(this)')) {
-    content = content.replace(
-      'WidgetUpdateScheduler.scheduleNextMidnight(this)',
-      'WidgetUpdateScheduler.scheduleNextMidnight(this)\n    WidgetUpdateScheduler.registerUserPresentReceiver(this)'
-    );
-  }
+  
   fs.writeFileSync(filePath, content, 'utf8');
 }
 
@@ -128,7 +112,7 @@ module.exports = function withMidnightWidgetScheduler(config, options = {}) {
       const manifest = cfg.modResults;
       ensurePermission(manifest, 'android.permission.SCHEDULE_EXACT_ALARM');
       ensurePermission(manifest, 'android.permission.WAKE_LOCK');
-      ensureReceiver(manifest);
+      ensureMidnightReceiver(manifest);
       return cfg;
     });
   }
@@ -138,34 +122,27 @@ module.exports = function withMidnightWidgetScheduler(config, options = {}) {
       'android',
       async (cfg) => {
         const projectRoot = cfg.modRequest.projectRoot;
-        const widgetDir = path.join(
+        const baseDir = path.join(
           projectRoot,
           'android',
           'app',
           'src',
           'main',
           'java',
-          ...WIDGET_PACKAGE.split('.')
+          'com', 'dstle', 'calendar'
         );
+        const widgetDir = path.join(baseDir, 'widget');
+        
         fs.mkdirSync(widgetDir, { recursive: true });
 
+        // Copy everything to widget package com.dstle.calendar.widget
         writeIfChanged(path.join(widgetDir, 'WidgetUpdateScheduler.kt'), readTemplate('WidgetUpdateScheduler.kt'));
         writeIfChanged(path.join(widgetDir, 'MidnightWidgetUpdateReceiver.kt'), readTemplate('MidnightWidgetUpdateReceiver.kt'));
+        writeIfChanged(path.join(widgetDir, 'WidgetNativeModule.kt'), readTemplate('WidgetNativeModule.kt'));
+        writeIfChanged(path.join(widgetDir, 'WidgetPackage.kt'), readTemplate('WidgetPackage.kt'));
         writeIfChanged(path.join(widgetDir, 'Memo.java'), readTemplate('Memo.java'));
 
-        const mainAppPath = path.join(
-          projectRoot,
-          'android',
-          'app',
-          'src',
-          'main',
-          'java',
-          'com',
-          'dstle',
-          'calendar',
-          'MainApplication.kt'
-        );
-        patchMainApplication(mainAppPath);
+        patchMainApplication(path.join(baseDir, 'MainApplication.kt'));
 
         return cfg;
       },

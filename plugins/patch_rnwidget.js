@@ -92,6 +92,28 @@ const p1Success = patchFile(
     "PendingIntent RequestCode with deterministic & NULL-safe version"
 );
 
+// 1a. Define tStart at the beginning of drawWidget in RNWidget.java
+const oldDrawWidgetStartOriginal = `    public void drawWidget(int widgetId) throws Exception {
+        ReadableMap light = config.getMap("light");
+        ReadableMap dark = config.getMap("dark");`;
+
+const oldDrawWidgetStartWithLogs = `    public void drawWidget(int widgetId) throws Exception {
+        long tStart = System.currentTimeMillis();
+        ReadableMap light = config.getMap("light");
+        ReadableMap dark = config.getMap("dark");`;
+
+const newDrawWidgetStart = `    public void drawWidget(int widgetId) throws Exception {
+        long tStart = System.currentTimeMillis();
+        ReadableMap light = config.getMap("light");
+        ReadableMap dark = config.getMap("dark");`;
+
+const p1aSuccess = patchFile(
+    rnWidgetPath,
+    [oldDrawWidgetStartOriginal, oldDrawWidgetStartWithLogs],
+    newDrawWidgetStart,
+    "long tStart variable definition in drawWidget"
+);
+
 // 1b. Patch RNWidget.java for Dual-Phase Rendering (Visuals First, Clickables Second)
 // Variant A: Original clean package code (without debug profiling logs)
 const oldDrawWidgetClickableSectionOriginal = `        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -314,7 +336,7 @@ const p2Success = patchFile(
     "buildWidgetFromRoot to remove duplicate MapClone (JNI Consumed-Safe)"
 );
 
-if (p1Success && p1bSuccess && p1cSuccess && p1dSuccess && p1eSuccess && p2Success) {
+if (p1Success && p1aSuccess && p1bSuccess && p1cSuccess && p1dSuccess && p1eSuccess && p2Success) {
     console.log("\n>>> ALL RN-ANDROID-WIDGET PATCHES APPLIED SUCCESSFULLY! <<<");
 } else {
     console.error("\n>>> SOME RN-ANDROID-WIDGET PATCHES FAILED! PLEASE CHECK ERRORS ABOVE. <<<");

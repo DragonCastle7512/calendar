@@ -175,7 +175,25 @@ export function MemoWidget({
                     justifyContent: 'flex-start',
                   }}
                 >
-                  {showDateContent && (
+                  {showDateContent && dayMemos.length === 0 && !isToday && !displayName ? (
+                    <FlexWidget style={{ width: 'match_parent', justifyContent: 'center', flexDirection: 'row' }}>
+                      <TextWidget
+                        text={String(date.getDate())}
+                        style={{
+                          fontSize: 11,
+                          fontWeight: '700',
+                          width: 24,
+                          color: dateColor as ColorProp,
+                          backgroundColor: transparentColor,
+                          borderRadius: 12,
+                          paddingHorizontal: 5,
+                          paddingTop: 1,
+                          textAlign: 'center'
+                        }}
+                      />
+                    </FlexWidget>
+                  ) : showDateContent ? (
+                    /* 복잡한 날짜 셀 (오늘이거나, 일정이 있거나, 기념일/공휴일인 경우 기존 레이아웃 유지) */
                     <FlexWidget style={{ flex: 1, width: 'match_parent', flexDirection: 'column' }}>
                       <OverlapWidget style={{ width: 'match_parent' }}>
                         <FlexWidget style={{ width: 'match_parent', justifyContent: 'center', flexDirection: 'row' }}>
@@ -254,7 +272,7 @@ export function MemoWidget({
                         })}
                       </FlexWidget>
                     </FlexWidget>
-                  )}
+                  ) : null}
                 </FlexWidget>
               );
             })}

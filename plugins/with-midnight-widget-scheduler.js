@@ -4,6 +4,7 @@ const {
   withAndroidManifest,
   withDangerousMod,
   AndroidConfig,
+  withGradleProperties,
 } = require('expo/config-plugins');
 
 const MIDNIGHT_RECEIVER_NAME = 'com.dstle.calendar.widget.MidnightWidgetUpdateReceiver';
@@ -106,6 +107,23 @@ function patchMainApplication(filePath) {
 module.exports = function withMidnightWidgetScheduler(config, options = {}) {
   const shouldPatchManifest = options.manifest !== false;
   const shouldCopyNative = options.native !== false;
+
+  config = withGradleProperties(config, (cfg) => {
+    const jvmArgsKey = 'org.gradle.jvmargs';
+    const jvmArgsValue = '-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError';
+    
+    const existingIndex = cfg.modResults.findIndex(item => item.key === jvmArgsKey);
+    if (existingIndex >= 0) {
+      cfg.modResults[existingIndex].value = jvmArgsValue;
+    } else {
+      cfg.modResults.push({
+        type: 'property',
+        key: jvmArgsKey,
+        value: jvmArgsValue,
+      });
+    }
+    return cfg;
+  });
 
   if (shouldPatchManifest) {
     config = withAndroidManifest(config, (cfg) => {

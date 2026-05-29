@@ -10,11 +10,13 @@ function patchFile(filePath, targetContents, replacementContent, description) {
     let content = fs.readFileSync(filePath, 'utf8').replace(/\r\n/g, '\n');
     const normalizedReplacement = replacementContent.replace(/\r\n/g, '\n');
 
+    // If already patched with the correct replacement, we are done
     if (content.includes(normalizedReplacement)) {
         console.log(`[ALREADY PATCHED] ${description} in ${path.basename(filePath)}`);
         return true;
     }
 
+    // Try each target content variant
     let matchedTarget = null;
     for (const target of (Array.isArray(targetContents) ? targetContents : [targetContents])) {
         const normalizedTarget = target.replace(/\r\n/g, '\n');
@@ -91,7 +93,17 @@ const p1Success = patchFile(
 );
 
 // 1b. Patch RNWidget.java for Dual-Phase Rendering (Visuals First, Clickables Second)
-const oldDrawWidgetClickableSection = `        long tBeforeClickables = System.currentTimeMillis();
+// Variant A: Original clean package code (without debug profiling logs)
+const oldDrawWidgetClickableSectionOriginal = `        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            addClickableAreas(widgetId, remoteWidgetView, widgetWithViews);
+        }
+        addCollectionViews(widgetId, remoteWidgetView, widgetWithViews);
+
+        AppWidgetManager.getInstance(appContext)
+            .updateAppWidget(widgetId, remoteWidgetView);`;
+
+// Variant B: Local workspace code (with debug profiling logs)
+const oldDrawWidgetClickableSectionWithLogs = `        long tBeforeClickables = System.currentTimeMillis();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             addClickableAreas(widgetId, remoteWidgetView, widgetWithViews);
@@ -137,13 +149,25 @@ const newDrawWidgetClickableSection = `        long tBeforeClickables = System.c
 
 const p1bSuccess = patchFile(
     rnWidgetPath,
-    oldDrawWidgetClickableSection,
+    [oldDrawWidgetClickableSectionOriginal, oldDrawWidgetClickableSectionWithLogs],
     newDrawWidgetClickableSection,
     "Dual-Phase Rendering (Visuals First, Clickables Second) in RNWidget.java"
 );
 
 // 1c. Light theme JNI clone removal in RNWidget.java
-const oldLightClone = `        ReadableMap configClone = Arguments.makeNativeMap(light.toHashMap());
+// Variant A: Original clean package code (without debug profiling logs)
+const oldLightCloneOriginal = `        ReadableMap configClone = Arguments.makeNativeMap(light.toHashMap());
+        RemoteViews remoteWidgetView = new RemoteViews(appContext.getPackageName(), R.layout.rn_widget);
+
+        WidgetWithViews widgetWithViews = WidgetFactory.buildWidgetFromRoot(
+            appContext,
+            configClone,
+            RNWidgetUtil.getWidgetWidth(appContext, widgetId),
+            RNWidgetUtil.getWidgetHeight(appContext, widgetId)
+        );`;
+
+// Variant B: Local workspace code (with debug profiling logs)
+const oldLightCloneWithLogs = `        ReadableMap configClone = Arguments.makeNativeMap(light.toHashMap());
         RemoteViews remoteWidgetView = new RemoteViews(appContext.getPackageName(), R.layout.rn_widget);
 
         long tAfterInit = System.currentTimeMillis();
@@ -170,7 +194,7 @@ const newLightClone = `        RemoteViews remoteWidgetView = new RemoteViews(ap
 
 const p1cSuccess = patchFile(
     rnWidgetPath,
-    oldLightClone,
+    [oldLightCloneOriginal, oldLightCloneWithLogs],
     newLightClone,
     "Light theme duplicate MapClone removal in RNWidget.java"
 );

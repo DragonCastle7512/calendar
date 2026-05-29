@@ -142,6 +142,77 @@ const p1bSuccess = patchFile(
     "Dual-Phase Rendering (Visuals First, Clickables Second) in RNWidget.java"
 );
 
+// 1c. Light theme JNI clone removal in RNWidget.java
+const oldLightClone = `        ReadableMap configClone = Arguments.makeNativeMap(light.toHashMap());
+        RemoteViews remoteWidgetView = new RemoteViews(appContext.getPackageName(), R.layout.rn_widget);
+
+        long tAfterInit = System.currentTimeMillis();
+        android.util.Log.d("WIDGET_NATIVE", "[PROFILE] Init/MapClone: " + (tAfterInit - tStart) + "ms");
+
+        WidgetWithViews widgetWithViews = WidgetFactory.buildWidgetFromRoot(
+            appContext,
+            configClone,
+            RNWidgetUtil.getWidgetWidth(appContext, widgetId),
+            RNWidgetUtil.getWidgetHeight(appContext, widgetId)
+        );`;
+
+const newLightClone = `        RemoteViews remoteWidgetView = new RemoteViews(appContext.getPackageName(), R.layout.rn_widget);
+
+        long tAfterInit = System.currentTimeMillis();
+        android.util.Log.d("WIDGET_NATIVE", "[PROFILE] Init/MapClone: " + (tAfterInit - tStart) + "ms");
+
+        WidgetWithViews widgetWithViews = WidgetFactory.buildWidgetFromRoot(
+            appContext,
+            light,
+            RNWidgetUtil.getWidgetWidth(appContext, widgetId),
+            RNWidgetUtil.getWidgetHeight(appContext, widgetId)
+        );`;
+
+const p1cSuccess = patchFile(
+    rnWidgetPath,
+    oldLightClone,
+    newLightClone,
+    "Light theme duplicate MapClone removal in RNWidget.java"
+);
+
+// 1d. Dark theme JNI clone removal in RNWidget.java
+const oldDarkClone = `            WidgetWithViews darkWidgetWithViews = WidgetFactory.buildWidgetFromRoot(
+                appContext,
+                Arguments.makeNativeMap(dark.toHashMap()),
+                RNWidgetUtil.getWidgetWidth(appContext, widgetId),
+                RNWidgetUtil.getWidgetHeight(appContext, widgetId)
+            );`;
+
+const newDarkClone = `            WidgetWithViews darkWidgetWithViews = WidgetFactory.buildWidgetFromRoot(
+                appContext,
+                dark,
+                RNWidgetUtil.getWidgetWidth(appContext, widgetId),
+                RNWidgetUtil.getWidgetHeight(appContext, widgetId)
+            );`;
+
+const p1dSuccess = patchFile(
+    rnWidgetPath,
+    oldDarkClone,
+    newDarkClone,
+    "Dark theme duplicate MapClone removal in RNWidget.java"
+);
+
+// 1e. Preview JNI clone removal in RNWidget.java
+const oldPreviewClone = `    public WritableMap createPreview(int width, int height) throws Exception {
+        ReadableMap configClone = Arguments.makeNativeMap(config.toHashMap());
+
+        WidgetWithViews widgetWithViews = WidgetFactory.buildWidgetFromRoot(appContext, configClone, width, height);`;
+
+const newPreviewClone = `    public WritableMap createPreview(int width, int height) throws Exception {
+        WidgetWithViews widgetWithViews = WidgetFactory.buildWidgetFromRoot(appContext, config, width, height);`;
+
+const p1eSuccess = patchFile(
+    rnWidgetPath,
+    oldPreviewClone,
+    newPreviewClone,
+    "Preview duplicate MapClone removal in RNWidget.java"
+);
+
 // 2. Patch WidgetFactory.java (Supports both clean package and our previous unswapped patch)
 const widgetFactoryPath = 'node_modules/react-native-android-widget/android/src/main/java/com/reactnativeandroidwidget/builder/WidgetFactory.java';
 
@@ -219,7 +290,7 @@ const p2Success = patchFile(
     "buildWidgetFromRoot to remove duplicate MapClone (JNI Consumed-Safe)"
 );
 
-if (p1Success && p1bSuccess && p2Success) {
+if (p1Success && p1bSuccess && p1cSuccess && p1dSuccess && p1eSuccess && p2Success) {
     console.log("\n>>> ALL RN-ANDROID-WIDGET PATCHES APPLIED SUCCESSFULLY! <<<");
 } else {
     console.error("\n>>> SOME RN-ANDROID-WIDGET PATCHES FAILED! PLEASE CHECK ERRORS ABOVE. <<<");

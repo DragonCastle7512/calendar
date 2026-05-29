@@ -122,6 +122,53 @@ module.exports = function withMidnightWidgetScheduler(config, options = {}) {
         value: jvmArgsValue,
       });
     }
+
+    // Limit active compiled CPU architectures to arm64-v8a in local Docker environments
+    // to reduce memory consumption by 75% and prevent WSL 2 / OOM crashes
+    if (process.env.LOCAL_BUILD) {
+      const archsKey = 'reactNativeArchitectures';
+      const archsValue = 'arm64-v8a';
+      const archsIndex = cfg.modResults.findIndex(item => item.key === archsKey);
+      if (archsIndex >= 0) {
+        cfg.modResults[archsIndex].value = archsValue;
+      } else {
+        cfg.modResults.push({
+          type: 'property',
+          key: archsKey,
+          value: archsValue,
+        });
+      }
+      console.log('[LOCAL BUILD OPTIMIZATION] Restricting reactNativeArchitectures to arm64-v8a');
+
+      // Prevent WSL 2 RAM/CPU exhaustion (OOM crashes & high-load socket EOF errors)
+      // by limiting concurrent tasks and disabling parallel execution.
+      const parallelKey = 'org.gradle.parallel';
+      const parallelIndex = cfg.modResults.findIndex(item => item.key === parallelKey);
+      if (parallelIndex >= 0) {
+        cfg.modResults[parallelIndex].value = 'false';
+      } else {
+        cfg.modResults.push({
+          type: 'property',
+          key: parallelKey,
+          value: 'false',
+        });
+      }
+
+      const workersKey = 'org.gradle.workers.max';
+      const workersValue = '2'; // Restricts Gradle to at most 2 worker processes
+      const workersIndex = cfg.modResults.findIndex(item => item.key === workersKey);
+      if (workersIndex >= 0) {
+        cfg.modResults[workersIndex].value = workersValue;
+      } else {
+        cfg.modResults.push({
+          type: 'property',
+          key: workersKey,
+          value: workersValue,
+        });
+      }
+      console.log('[LOCAL BUILD OPTIMIZATION] Setting org.gradle.parallel=false and org.gradle.workers.max=2');
+    }
+
     return cfg;
   });
 

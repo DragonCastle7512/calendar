@@ -1,3 +1,10 @@
+// Polyfill Array.prototype.toReversed for older Node.js versions in the Docker container
+if (!Array.prototype.toReversed) {
+  Array.prototype.toReversed = function() {
+    return [...this].reverse();
+  };
+}
+
 const appJson = require('./app.json');
 
 module.exports = ({ config }) => {

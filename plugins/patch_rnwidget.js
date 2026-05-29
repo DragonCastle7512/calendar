@@ -90,6 +90,58 @@ const p1Success = patchFile(
     "PendingIntent RequestCode with deterministic & NULL-safe version"
 );
 
+// 1b. Patch RNWidget.java for Dual-Phase Rendering (Visuals First, Clickables Second)
+const oldDrawWidgetClickableSection = `        long tBeforeClickables = System.currentTimeMillis();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            addClickableAreas(widgetId, remoteWidgetView, widgetWithViews);
+        }
+        addCollectionViews(widgetId, remoteWidgetView, widgetWithViews);
+
+        long tAfterClickables = System.currentTimeMillis();
+        android.util.Log.d("WIDGET_NATIVE", "[PROFILE] addClickableAreas (RemoteViews setup): " + (tAfterClickables - tBeforeClickables) + "ms");
+
+        AppWidgetManager.getInstance(appContext)
+            .updateAppWidget(widgetId, remoteWidgetView);
+
+        long tEnd = System.currentTimeMillis();
+        android.util.Log.d("WIDGET_NATIVE", "[PROFILE] updateAppWidget (IPC Call): " + (tEnd - tAfterClickables) + "ms");
+        android.util.Log.d("WIDGET_NATIVE", "[NATIVE] drawWidgetById END. Native Render Time: " + (tEnd - tStart) + "ms");`;
+
+const newDrawWidgetClickableSection = `        long tBeforeClickables = System.currentTimeMillis();
+
+        // --- DUAL-PHASE RENDER (PHASE 1: VISUALS ONLY) ---
+        // Push the image update to the launcher immediately so the user sees the new widget UI instantly
+        AppWidgetManager.getInstance(appContext)
+            .updateAppWidget(widgetId, remoteWidgetView);
+        
+        long tFirstUpdate = System.currentTimeMillis();
+        android.util.Log.d("WIDGET_NATIVE", "[PROFILE] Fast Visual Update (IPC Call): " + (tFirstUpdate - tBeforeClickables) + "ms");
+
+        // --- DUAL-PHASE RENDER (PHASE 2: INTERACTIVE DEEP LINKS) ---
+        // Lazily compute and add the transparent clickable overlays to make the cells interactive
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            addClickableAreas(widgetId, remoteWidgetView, widgetWithViews);
+        }
+        addCollectionViews(widgetId, remoteWidgetView, widgetWithViews);
+
+        long tAfterClickables = System.currentTimeMillis();
+        android.util.Log.d("WIDGET_NATIVE", "[PROFILE] addClickableAreas (RemoteViews setup): " + (tAfterClickables - tFirstUpdate) + "ms");
+
+        AppWidgetManager.getInstance(appContext)
+            .updateAppWidget(widgetId, remoteWidgetView);
+
+        long tEnd = System.currentTimeMillis();
+        android.util.Log.d("WIDGET_NATIVE", "[PROFILE] Interactive Update (IPC Call): " + (tEnd - tAfterClickables) + "ms");
+        android.util.Log.d("WIDGET_NATIVE", "[NATIVE] drawWidgetById END. Native Render Time: " + (tEnd - tStart) + "ms");`;
+
+const p1bSuccess = patchFile(
+    rnWidgetPath,
+    oldDrawWidgetClickableSection,
+    newDrawWidgetClickableSection,
+    "Dual-Phase Rendering (Visuals First, Clickables Second) in RNWidget.java"
+);
+
 // 2. Patch WidgetFactory.java (Supports both clean package and our previous unswapped patch)
 const widgetFactoryPath = 'node_modules/react-native-android-widget/android/src/main/java/com/reactnativeandroidwidget/builder/WidgetFactory.java';
 
@@ -167,7 +219,7 @@ const p2Success = patchFile(
     "buildWidgetFromRoot to remove duplicate MapClone (JNI Consumed-Safe)"
 );
 
-if (p1Success && p2Success) {
+if (p1Success && p1bSuccess && p2Success) {
     console.log("\n>>> ALL RN-ANDROID-WIDGET PATCHES APPLIED SUCCESSFULLY! <<<");
 } else {
     console.error("\n>>> SOME RN-ANDROID-WIDGET PATCHES FAILED! PLEASE CHECK ERRORS ABOVE. <<<");

@@ -186,7 +186,7 @@ export function MemoWidget({
                           color: dateColor as ColorProp,
                           backgroundColor: transparentColor,
                           borderRadius: 12,
-                          paddingHorizontal: 5,
+                          paddingHorizontal: 0,
                           paddingTop: 1,
                           textAlign: 'center'
                         }}
@@ -206,7 +206,7 @@ export function MemoWidget({
                               color: dateColor as ColorProp,
                               backgroundColor: isToday && isCurrentMonth ? '#3f6cbe' : transparentColor,
                               borderRadius: 12,
-                              paddingHorizontal: 5,
+                              paddingHorizontal: 0,
                               paddingTop: 1,
                               textAlign: 'center'
                             }}

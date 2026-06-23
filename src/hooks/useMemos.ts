@@ -105,15 +105,54 @@ export const useMemos = (onUpdate?: (latestMemos: MemosState) => void) => {
           }
         }
       } else if (oldRepeat !== 'none' && repeat !== 'none' && oldGroupId) {
-        Object.keys(updated).forEach(date => {
-          updated[date] = updated[date].map(m => 
-            m.repeatGroupId === oldGroupId ? { ...m, title, content, color, repeat } : m
-          );
-        });
+        if (oldRepeat === repeat) {
+          Object.keys(updated).forEach(date => {
+            updated[date] = updated[date].map(m => 
+              m.repeatGroupId === oldGroupId ? { ...m, title, content, color } : m
+            );
+          });
+        } else {
+          Object.keys(updated).forEach(date => {
+            updated[date] = updated[date].filter(m => m.repeatGroupId !== oldGroupId || (date === target && m.id === editingId));
+            if (updated[date].length === 0) delete updated[date];
+          });
+
+          const repeatGroupId = `group_${Date.now()}`;
+          const startDate = new Date(target);
+          const limit = repeat === 'weekly' ? 104 : repeat === 'monthly' ? 24 : 10;
+          
+          for (let i = 0; i < limit; i++) {
+            const d = new Date(startDate);
+            if (repeat === 'weekly') d.setDate(startDate.getDate() + i * 7);
+            else if (repeat === 'monthly') d.setMonth(startDate.getMonth() + i);
+            else if (repeat === 'yearly') d.setFullYear(startDate.getFullYear() + i);
+            
+            const dKey = getDateKey(d);
+            if (i === 0) {
+              updated[target] = (updated[target] || []).map(m => 
+                m.id === editingId ? { ...m, title, content, color, repeat, repeatGroupId } : m
+              );
+            } else {
+              const newMemo: MemoEntry = { 
+                id: `${Date.now()}_${i}`, 
+                title, 
+                content, 
+                color, 
+                repeat, 
+                repeatGroupId 
+              };
+              updated[dKey] = [...(updated[dKey] || []), newMemo];
+            }
+          }
+        }
       } else {
-        updated[target] = (updated[target] || []).map(m => 
-          m.id === editingId ? { ...m, title, content, color, repeat } : m
-        );
+        updated[target] = (updated[target] || []).map(m => {
+          if (m.id === editingId) {
+            const { repeatGroupId, ...rest } = m;
+            return { ...rest, title, content, color, repeat };
+          }
+          return m;
+        });
       }
     } else {
       const repeatGroupId = repeat !== 'none' ? `group_${Date.now()}` : undefined;

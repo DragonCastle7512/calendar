@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useRef, useState } from 'react';
-import { HOLIDAY_CACHE_KEY, PROXY_TOKEN, PROXY_URL } from '../constants/calendar';
+import { HOLIDAY_API_KEY, HOLIDAY_API_URL, HOLIDAY_CACHE_KEY } from '../constants/calendar';
 
 export const useHolidays = () => {
   const [holidays, setHolidays] = useState<{ [date: string]: string }>({});
@@ -19,14 +19,15 @@ export const useHolidays = () => {
           return;
         }
       }
-      if (!PROXY_URL) return;
+      if (!HOLIDAY_API_URL || !HOLIDAY_API_KEY) return;
       
       syncedYears.current.add(year);
-      const response = await fetch(`${PROXY_URL}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year, appId: PROXY_TOKEN }),
-      });
+      
+      const hasPercent = HOLIDAY_API_KEY.includes('%');
+      const serviceKey = hasPercent ? HOLIDAY_API_KEY : encodeURIComponent(HOLIDAY_API_KEY);
+      const url = `${HOLIDAY_API_URL}?serviceKey=${serviceKey}&solYear=${year}&numOfRows=100&_type=json`;
+      
+      const response = await fetch(url);
       if (response.ok) {
         const resData = await response.json();
         const holidayMap: { [key: string]: string } = {};

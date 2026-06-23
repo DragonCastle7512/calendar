@@ -43,8 +43,8 @@ export const MEMO_COLORS = [
   '#ffffba', '#CCCCFF', '#89CFF0', '#E5E4E2', '#AEC6CF'
 ];
 
-export const PROXY_URL = process.env.EXPO_PUBLIC_PROXY_URL || '';
-export const PROXY_TOKEN = process.env.EXPO_PUBLIC_PROXY_TOKEN || '';
+export const HOLIDAY_API_URL = process.env.EXPO_PUBLIC_HOLIDAY_API_URL || '';
+export const HOLIDAY_API_KEY = process.env.EXPO_PUBLIC_HOLIDAY_API_KEY || '';
 
 export const OFFLINE_HOLIDAYS: { [date: string]: string } = {
   '01-01': '신정',

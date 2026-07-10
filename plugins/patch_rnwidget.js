@@ -336,7 +336,55 @@ const p2Success = patchFile(
     "buildWidgetFromRoot to remove duplicate MapClone (JNI Consumed-Safe)"
 );
 
-if (p1Success && p1aSuccess && p1bSuccess && p1cSuccess && p1dSuccess && p1eSuccess && p2Success) {
+// 1f. Clickable Area padding calculation patch (Fix for Foldable Devices)
+const oldClickablePadding = `        clickableRemoteView.setViewPadding(
+            R.id.rn_widget_clickable_positioner,
+            offsetViewBounds.left,
+            offsetViewBounds.top,
+            RNWidgetUtil.dpToPx(appContext, RNWidgetUtil.getWidgetWidth(appContext, widgetId)) - offsetViewBounds.right,
+            0
+        );`;
+
+const newClickablePadding = `        clickableRemoteView.setViewPadding(
+            R.id.rn_widget_clickable_positioner,
+            offsetViewBounds.left,
+            offsetViewBounds.top,
+            rootWidget.getMeasuredWidth() - offsetViewBounds.right,
+            0
+        );`;
+
+const p1fSuccess = patchFile(
+    rnWidgetPath,
+    oldClickablePadding,
+    newClickablePadding,
+    "Fix Foldable widget click issue by using rootWidget.getMeasuredWidth() instead of getWidgetWidth()"
+);
+
+// 1g. Collection View padding calculation patch (Fix for Foldable Devices)
+const oldCollectionPadding = `        collectionRemoteView.setViewPadding(
+            R.id.rn_widget_list_positioner,
+            offsetViewBounds.left,
+            offsetViewBounds.top,
+            RNWidgetUtil.dpToPx(appContext, RNWidgetUtil.getWidgetWidth(appContext, widgetId)) - offsetViewBounds.right,
+            RNWidgetUtil.dpToPx(appContext, RNWidgetUtil.getWidgetHeight(appContext, widgetId)) - offsetViewBounds.bottom
+        );`;
+
+const newCollectionPadding = `        collectionRemoteView.setViewPadding(
+            R.id.rn_widget_list_positioner,
+            offsetViewBounds.left,
+            offsetViewBounds.top,
+            rootView.getMeasuredWidth() - offsetViewBounds.right,
+            rootView.getMeasuredHeight() - offsetViewBounds.bottom
+        );`;
+
+const p1gSuccess = patchFile(
+    rnWidgetPath,
+    oldCollectionPadding,
+    newCollectionPadding,
+    "Fix Foldable widget list height/width by using rootView.getMeasuredWidth() & Height()"
+);
+
+if (p1Success && p1aSuccess && p1bSuccess && p1cSuccess && p1dSuccess && p1eSuccess && p1fSuccess && p1gSuccess && p2Success) {
     console.log("\n>>> ALL RN-ANDROID-WIDGET PATCHES APPLIED SUCCESSFULLY! <<<");
 } else {
     console.error("\n>>> SOME RN-ANDROID-WIDGET PATCHES FAILED! PLEASE CHECK ERRORS ABOVE. <<<");

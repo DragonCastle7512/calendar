@@ -12,7 +12,7 @@ import {
   NORMAL_ROW_HEIGHT,
   OFFLINE_HOLIDAYS
 } from '../constants/calendar';
-import { AppSettings } from '../hooks/useSettings';
+import { AppSettings, normalizeFontSizeScale } from '../hooks/useSettings';
 import { MemosState } from '../types/calendar';
 import { getDateKey } from '../utils/date';
 import { getLunarHoliday } from '../utils/holiday';
@@ -46,9 +46,8 @@ export const WeekRow = ({
 
   const { fontSizeIndex, alignmentVertical, alignmentHorizontal, showHolidays, showOtherMonths, memoHighlightType } = settings;
 
-  // Font size scaling
-  const scales = [0.85, 1, 1.15];
-  const scale = scales[fontSizeIndex] || 1;
+  // Font size scaling (호환성: normalizeFontSizeScale 사용)
+  const scale = normalizeFontSizeScale(fontSizeIndex);
 
   // --- 높이 기반 동적 메모 개수 계산 (MemoWidget.tsx와 동일한 로직 기준 수정) ---
   const DATE_INFO_HEIGHT = 20;

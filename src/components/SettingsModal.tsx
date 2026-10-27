@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BackHandler,
   Dimensions,
+  LayoutChangeEvent,
   Modal,
+  PanResponder,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,9 +14,14 @@ import {
   View
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AppSettings } from '../hooks/useSettings';
+import { FONT_MAX_SCALE, FONT_MIN_SCALE } from '../constants/calendar';
+import { AppSettings, normalizeFontSizeScale } from '../hooks/useSettings';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+const MIN_SCALE = FONT_MIN_SCALE;
+const MAX_SCALE = FONT_MAX_SCALE;
+const THUMB_SIZE = 22;
 
 interface SettingsModalProps {
   visible: boolean;
@@ -22,6 +30,146 @@ interface SettingsModalProps {
   onSave: (newSettings: AppSettings) => void;
   isFromWidget?: boolean;
 }
+
+interface FontSizeRangeSliderProps {
+  scale: number;
+  onChange: (val: number) => void;
+}
+
+const FontSizeRangeSlider = ({ scale, onChange }: FontSizeRangeSliderProps) => {
+  const [trackWidth, setTrackWidth] = useState(0);
+  const trackWidthRef = useRef(0);
+  trackWidthRef.current = trackWidth;
+  const startXRef = useRef(0);
+
+  const currentScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
+
+  const handleTouchAt = (currentX: number) => {
+    const width = trackWidthRef.current;
+    if (width <= THUMB_SIZE) return;
+    const effectiveWidth = width - THUMB_SIZE;
+    const effectiveX = Math.max(0, Math.min(effectiveWidth, currentX - THUMB_SIZE / 2));
+    const ratio = effectiveX / effectiveWidth;
+    const rawVal = MIN_SCALE + ratio * (MAX_SCALE - MIN_SCALE);
+    const stepped = Math.round(rawVal * 100) / 100;
+    onChange(stepped);
+  };
+
+  const panResponder = useMemo(() => {
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: (evt) => {
+        startXRef.current = evt.nativeEvent.locationX;
+        handleTouchAt(startXRef.current);
+      },
+      onPanResponderMove: (_evt, gestureState) => {
+        handleTouchAt(startXRef.current + gestureState.dx);
+      },
+      onPanResponderRelease: (_evt, gestureState) => {
+        handleTouchAt(startXRef.current + gestureState.dx);
+      },
+    });
+  }, []);
+
+  const onLayout = (e: LayoutChangeEvent) => {
+    setTrackWidth(e.nativeEvent.layout.width);
+  };
+
+  const progressRatio = (currentScale - MIN_SCALE) / (MAX_SCALE - MIN_SCALE);
+  const percentage = Math.round(currentScale * 100);
+  const defaultRatio = (1.0 - MIN_SCALE) / (MAX_SCALE - MIN_SCALE);
+
+  const thumbLeft = trackWidth > THUMB_SIZE ? progressRatio * (trackWidth - THUMB_SIZE) : 0;
+  const activeWidth = trackWidth > THUMB_SIZE ? thumbLeft + THUMB_SIZE / 2 : 0;
+
+  return (
+    <View style={styles.sliderContainer}>
+      <View style={styles.sliderHeader}>
+        <Text style={styles.settingsLabel}>글자 크기</Text>
+        <View style={styles.sliderValueWrap}>
+          <View style={styles.percentageBadge}>
+            <Text style={styles.sliderValueText}>{percentage}%</Text>
+          </View>
+          {percentage !== 100 && (
+            <TouchableOpacity
+              style={styles.resetBtn}
+              onPress={() => onChange(1.0)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.resetBtnText}>기본 크기</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      <View style={styles.sliderRow}>
+        <Text style={styles.sliderLabelSmall}>가</Text>
+        <View
+          style={styles.trackContainer}
+          onLayout={onLayout}
+          {...panResponder.panHandlers}
+        >
+          {/* 비활성 트랙 */}
+          <View style={styles.trackBackground} pointerEvents="none" />
+
+          {/* 기본값 (100%) 마커 */}
+          {trackWidth > THUMB_SIZE && (
+            <View
+              style={[
+                styles.defaultMarker,
+                { left: defaultRatio * (trackWidth - THUMB_SIZE) + THUMB_SIZE / 2 - 1 }
+              ]}
+              pointerEvents="none"
+            />
+          )}
+
+          {/* 활성 트랙 */}
+          <View
+            style={[
+              styles.trackActive,
+              { width: activeWidth }
+            ]}
+            pointerEvents="none"
+          />
+
+          {/* 썸 (Thumb) */}
+          {trackWidth > THUMB_SIZE && (
+            <View
+              style={[
+                styles.thumb,
+                { left: thumbLeft }
+              ]}
+              pointerEvents="none"
+            >
+              <View style={styles.thumbInner} />
+            </View>
+          )}
+        </View>
+        <Text style={styles.sliderLabelLarge}>가</Text>
+      </View>
+
+      {/* 실시간 미리보기 */}
+      <View style={styles.previewBox}>
+        <Text style={styles.previewLabel}>미리보기</Text>
+        <View style={styles.previewChip}>
+          <Text
+            style={[
+              styles.previewChipText,
+              { fontSize: Math.round(9 * currentScale * 10) / 10 }
+            ]}
+            numberOfLines={1}
+          >
+            테스트용 텍스트
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+};
 
 export const SettingsModal = ({
   visible,
@@ -34,7 +182,10 @@ export const SettingsModal = ({
 
   useEffect(() => {
     if (visible) {
-      setLocalSettings(initialSettings);
+      setLocalSettings({
+        ...initialSettings,
+        fontSizeIndex: normalizeFontSizeScale(initialSettings.fontSizeIndex, MAX_SCALE),
+      });
     }
   }, [visible, initialSettings]);
 
@@ -54,12 +205,6 @@ export const SettingsModal = ({
     onSave(localSettings);
   };
 
-  const fontSizes = [
-    { label: '작게', index: 0 },
-    { label: '보통', index: 1 },
-    { label: '크게', index: 2 },
-  ];
-
   const alignmentsVertical = [
     { label: '상단', value: 'top' as const },
     { label: '중앙', value: 'center' as const },
@@ -74,6 +219,8 @@ export const SettingsModal = ({
     { label: '전체 강조', value: 'full' as const },
     { label: '글자만 강조', value: 'text' as const },
   ];
+
+  const currentScale = normalizeFontSizeScale(localSettings.fontSizeIndex, MAX_SCALE);
 
   return (
     <Modal
@@ -99,27 +246,16 @@ export const SettingsModal = ({
               </TouchableOpacity>
             </View>
 
-            <View style={styles.content}>
-              <Text style={styles.settingsLabel}>글자 크기</Text>
-              <View style={styles.optionRow}>
-                {fontSizes.map((size) => (
-                  <TouchableOpacity
-                    key={size.index}
-                    style={[
-                      styles.optionBtn,
-                      localSettings.fontSizeIndex === size.index && styles.optionBtnActive
-                    ]}
-                    onPress={() => updateLocalSetting({ fontSizeIndex: size.index })}
-                  >
-                    <Text style={[
-                      styles.optionBtnText,
-                      localSettings.fontSizeIndex === size.index && styles.optionBtnTextActive
-                    ]}>
-                      {size.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+            <ScrollView 
+              style={styles.scrollArea}
+              contentContainerStyle={styles.content}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* 글자 크기 Range 드래그 조절기 */}
+              <FontSizeRangeSlider
+                scale={currentScale}
+                onChange={(val: number) => updateLocalSetting({ fontSizeIndex: val })}
+              />
 
               <View style={styles.alignContainer}>
                 <View style={styles.align}>
@@ -236,7 +372,7 @@ export const SettingsModal = ({
                   </TouchableOpacity>
                 ))}
               </View>
-            </View>
+            </ScrollView>
           </View>
         </View>
       </GestureHandlerRootView>
@@ -256,6 +392,7 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     width: SCREEN_WIDTH * 0.9,
+    maxHeight: SCREEN_HEIGHT * 0.85,
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     overflow: 'hidden',
@@ -284,19 +421,159 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  scrollArea: {
+    flexGrow: 0,
+  },
   content: {
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 24,
   },
   settingsLabel: { 
     fontSize: 15, 
     fontWeight: '700', 
     color: '#444', 
-    marginBottom: 12 
+    marginBottom: 10 
   },
+  // Slider Styles
+  sliderContainer: {
+    marginBottom: 20,
+  },
+  sliderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  sliderValueWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  percentageBadge: {
+    backgroundColor: '#EBF3FC',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  sliderValueText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#5A9FE8',
+  },
+  resetBtn: {
+    backgroundColor: '#F1F3F5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  resetBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#777',
+  },
+  sliderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  sliderLabelSmall: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#999',
+    width: 18,
+    textAlign: 'center',
+  },
+  sliderLabelLarge: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#555',
+    width: 22,
+    textAlign: 'center',
+  },
+  trackContainer: {
+    flex: 1,
+    height: 38,
+    justifyContent: 'center',
+    marginHorizontal: 8,
+    position: 'relative',
+  },
+  trackBackground: {
+    height: 6,
+    backgroundColor: '#E9ECEF',
+    borderRadius: 3,
+    width: '100%',
+  },
+  defaultMarker: {
+    position: 'absolute',
+    width: 2,
+    height: 12,
+    backgroundColor: '#CCD0D5',
+    borderRadius: 1,
+    top: 13,
+  },
+  trackActive: {
+    position: 'absolute',
+    height: 6,
+    backgroundColor: '#5A9FE8',
+    borderRadius: 3,
+    left: 0,
+  },
+  thumb: {
+    position: 'absolute',
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    borderRadius: THUMB_SIZE / 2,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2.5,
+    borderColor: '#5A9FE8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+  },
+  thumbInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#5A9FE8',
+  },
+  previewBox: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#ECEFF1',
+    padding: 10,
+    marginTop: 8,
+  },
+  previewLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8A8A8A',
+    marginBottom: 6,
+  },
+  previewChip: {
+    backgroundColor: '#C8F0C4',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+  },
+  previewChipText: {
+    color: '#000000',
+    fontWeight: '500',
+    letterSpacing: 0.2,
+  },
+  // End Slider Styles
   optionRow: { 
     flexDirection: 'row', 
     gap: 8, 
-    marginBottom: 24 
+    marginBottom: 20 
   },
   optionBtn: { 
     flex: 1, 
@@ -319,49 +596,6 @@ const styles = StyleSheet.create({
   },
   optionBtnTextActive: { 
     color: '#FFF' 
-  },
-  settingsFooter: { 
-    borderTopWidth: 1, 
-    borderTopColor: '#F0F0F0', 
-    paddingTop: 20, 
-    alignItems: 'center' 
-  },
-  settingsInfo: { 
-    fontSize: 12, 
-    color: '#999', 
-    marginBottom: 20,
-    textAlign: 'center'
-  },
-  footerBtns: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%'
-  },
-  cancelBtn: { 
-    flex: 1,
-    height: 50, 
-    backgroundColor: '#F1F1F1', 
-    borderRadius: 12, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  cancelBtnText: { 
-    color: '#666', 
-    fontSize: 15, 
-    fontWeight: '700' 
-  },
-  saveBtn: { 
-    flex: 2,
-    height: 50, 
-    backgroundColor: '#333', 
-    borderRadius: 12, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  saveBtnText: { 
-    color: '#FFF', 
-    fontSize: 15, 
-    fontWeight: '700' 
   },
   alignContainer: {
     flexDirection: 'row',

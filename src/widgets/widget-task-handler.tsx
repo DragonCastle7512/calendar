@@ -21,7 +21,7 @@ import {
   WIDGET_SHOW_HOLIDAYS_KEY,
   WIDGET_SHOW_OTHER_MONTHS_KEY
 } from '../constants/calendar';
-import { AppSettings } from '../hooks/useSettings';
+import { AppSettings, normalizeFontSizeScale } from '../hooks/useSettings';
 import { MemosState } from '../types/calendar';
 import { getDateKey } from '../utils/date';
 import { getLunarHoliday } from '../utils/holiday';
@@ -31,15 +31,20 @@ async function getWidgetSettings(allValues: Record<string, string | null>): Prom
   const unified = allValues[WIDGET_SETTINGS_KEY];
   if (unified) {
     try {
-      return JSON.parse(unified);
+      const parsed = JSON.parse(unified);
+      if (parsed.fontSizeIndex !== undefined) {
+        parsed.fontSizeIndex = normalizeFontSizeScale(parsed.fontSizeIndex);
+      }
+      return parsed;
     } catch (e) {
       // console.error('Failed to parse unified widget settings', e);
     }
   }
 
   // 값이 없는 경우 마이그레이션 및 기본값 설정
+  const rawFont = allValues[WIDGET_FONT_SIZE_KEY];
   const settings: AppSettings = {
-    fontSizeIndex: allValues[WIDGET_FONT_SIZE_KEY] ? parseInt(allValues[WIDGET_FONT_SIZE_KEY]!, 10) : 1,
+    fontSizeIndex: rawFont ? normalizeFontSizeScale(rawFont) : 1.0,
     alignmentVertical: (allValues[WIDGET_ALIGNMENT_VERTICAL_KEY] as 'top' | 'center') || 'top',
     alignmentHorizontal: (allValues[WIDGET_ALIGNMENT_HORIZONTAL_KEY] as 'left' | 'center') || 'left',
     showHolidays: allValues[WIDGET_SHOW_HOLIDAYS_KEY] !== null ? allValues[WIDGET_SHOW_HOLIDAYS_KEY] === 'true' : true,

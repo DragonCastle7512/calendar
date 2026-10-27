@@ -27,6 +27,9 @@ export const WIDGET_NAV_DEBOUNCE_MS = 500;
 export const WIDGET_NAV_STALE_MS = 1000 * 60 * 5;
 export const SYNC_EXPIRY_MS = 1000 * 60 * 60 * 24 * 90; // 90일
 
+export const FONT_MIN_SCALE = 0.70;
+export const FONT_MAX_SCALE = 1.80;
+
 export const CELL_WIDTH = SCREEN_WIDTH / 7;
 export const HEADER_HEIGHT = 60;
 export const WEEKDAY_HEIGHT = 36;

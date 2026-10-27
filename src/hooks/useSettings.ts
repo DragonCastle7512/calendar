@@ -7,6 +7,8 @@ import {
   APP_MEMO_HIGHLIGHT_TYPE_KEY,
   APP_SHOW_HOLIDAYS_KEY,
   APP_SHOW_OTHER_MONTHS_KEY,
+  FONT_MAX_SCALE,
+  FONT_MIN_SCALE,
   WIDGET_ALIGNMENT_HORIZONTAL_KEY,
   WIDGET_ALIGNMENT_VERTICAL_KEY,
   WIDGET_FONT_SIZE_KEY,
@@ -17,6 +19,7 @@ import {
 } from '../constants/calendar';
 
 export interface AppSettings {
+  /** 폰트 크기 배율 (기본 1.0, 범위 FONT_MIN_SCALE ~ FONT_MAX_SCALE) */
   fontSizeIndex: number;
   alignmentVertical: 'top' | 'center';
   alignmentHorizontal: 'left' | 'center';
@@ -25,9 +28,19 @@ export interface AppSettings {
   memoHighlightType: 'full' | 'text';
 }
 
+export const normalizeFontSizeScale = (val: any, maxScale: number = FONT_MAX_SCALE): number => {
+  const num = typeof val === 'number' ? val : parseFloat(val);
+  if (isNaN(num)) return 1.0;
+  // 기존 인덱스 호환: 0 -> 0.85, 1 -> 1.0, 2 -> 1.15
+  if (num === 0) return 0.85;
+  if (num === 1) return 1.0;
+  if (num === 2) return 1.15;
+  return Math.max(FONT_MIN_SCALE, Math.min(maxScale, Math.round(num * 100) / 100));
+};
+
 export const useSettings = () => {
   const [widgetSettings, setWidgetSettings] = useState<AppSettings>({
-    fontSizeIndex: 1,
+    fontSizeIndex: 1.0,
     alignmentVertical: 'top',
     alignmentHorizontal: 'left',
     showHolidays: true,
@@ -36,7 +49,7 @@ export const useSettings = () => {
   });
 
   const [appSettings, setAppSettings] = useState<AppSettings>({
-    fontSizeIndex: 1,
+    fontSizeIndex: 1.0,
     alignmentVertical: 'top',
     alignmentHorizontal: 'left',
     showHolidays: true,
@@ -67,6 +80,9 @@ export const useSettings = () => {
       if (unifiedWidgetSettings) {
         try {
           const parsed = JSON.parse(unifiedWidgetSettings);
+          if (parsed.fontSizeIndex !== undefined) {
+            parsed.fontSizeIndex = normalizeFontSizeScale(parsed.fontSizeIndex);
+          }
           setWidgetSettings(parsed);
         } catch (e) {
           console.error('Failed to parse unified widget settings', e);
@@ -88,7 +104,7 @@ export const useSettings = () => {
           AsyncStorage.getItem(WIDGET_MEMO_HIGHLIGHT_TYPE_KEY),
         ]);
 
-        if (savedWidgetFontSize) setWidgetSettings(prev => ({ ...prev, fontSizeIndex: parseInt(savedWidgetFontSize, 10) }));
+        if (savedWidgetFontSize) setWidgetSettings(prev => ({ ...prev, fontSizeIndex: normalizeFontSizeScale(savedWidgetFontSize) }));
         if (savedWidgetAlignmentV) setWidgetSettings(prev => ({ ...prev, alignmentVertical: savedWidgetAlignmentV as 'top' | 'center' }));
         if (savedWidgetAlignmentH) setWidgetSettings(prev => ({ ...prev, alignmentHorizontal: savedWidgetAlignmentH as 'left' | 'center' }));
         if (savedWidgetShowHolidays) setWidgetSettings(prev => ({ ...prev, showHolidays: savedWidgetShowHolidays === 'true' }));
@@ -96,7 +112,7 @@ export const useSettings = () => {
         if (savedWidgetHighlightType) setWidgetSettings(prev => ({ ...prev, memoHighlightType: savedWidgetHighlightType as 'full' | 'text' }));
       }
 
-      if (savedAppFontSize) setAppSettings(prev => ({ ...prev, fontSizeIndex: parseInt(savedAppFontSize, 10) }));
+      if (savedAppFontSize) setAppSettings(prev => ({ ...prev, fontSizeIndex: normalizeFontSizeScale(savedAppFontSize) }));
       if (savedAppAlignmentV) setAppSettings(prev => ({ ...prev, alignmentVertical: savedAppAlignmentV as 'top' | 'center' }));
       if (savedAppAlignmentH) setAppSettings(prev => ({ ...prev, alignmentHorizontal: savedAppAlignmentH as 'left' | 'center' }));
       if (savedAppShowHolidays) setAppSettings(prev => ({ ...prev, showHolidays: savedAppShowHolidays === 'true' }));

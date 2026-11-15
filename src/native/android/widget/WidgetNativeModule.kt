@@ -13,4 +13,9 @@ class WidgetNativeModule(reactContext: ReactApplicationContext) : ReactContextBa
     fun saveLastRenderTime(time: Double) {
         WidgetUpdateScheduler.saveLastRenderTime(reactApplicationContext, time.toLong())
     }
+
+    @ReactMethod
+    fun unlockNavigation() {
+        Memo.unlockNavigation()
+    }
 }

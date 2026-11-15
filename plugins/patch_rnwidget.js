@@ -45,7 +45,7 @@ function patchFile(filePath, targetContents, replacementContent, description) {
 
 // 1. Patch RNWidget.java
 const rnWidgetPath = 'node_modules/react-native-android-widget/android/src/main/java/com/reactnativeandroidwidget/RNWidget.java';
-const oldRegisterClickTask = `    private void registerClickTask(int id, ClickableView clickableView, RemoteViews widgetView, Integer button) {
+const oldRegisterClickTaskOriginal = `    private void registerClickTask(int id, ClickableView clickableView, RemoteViews widgetView, Integer button) {
         Intent intent = new Intent(appContext.getPackageName() + ".WIDGET_CLICK");
         intent.setComponent(new ComponentName(appContext, RNWidgetUtil.getWidgetProviderClassName(appContext, widgetName)));
         intent.putExtra("widgetId", id);
@@ -61,7 +61,7 @@ const oldRegisterClickTask = `    private void registerClickTask(int id, Clickab
         widgetView.setOnClickPendingIntent(button, pendingIntent);
     }`;
 
-const newRegisterClickTask = `    private void registerClickTask(int id, ClickableView clickableView, RemoteViews widgetView, Integer button) {
+const oldRegisterClickTaskV1 = `    private void registerClickTask(int id, ClickableView clickableView, RemoteViews widgetView, Integer button) {
         Intent intent = new Intent(appContext.getPackageName() + ".WIDGET_CLICK");
         intent.setComponent(new ComponentName(appContext, RNWidgetUtil.getWidgetProviderClassName(appContext, widgetName)));
         intent.putExtra("widgetId", id);
@@ -85,11 +85,109 @@ const newRegisterClickTask = `    private void registerClickTask(int id, Clickab
         widgetView.setOnClickPendingIntent(button, pendingIntent);
     }`;
 
+const oldRegisterClickTaskV2 = `    private void registerClickTask(int id, ClickableView clickableView, RemoteViews widgetView, Integer button) {
+        Intent intent = new Intent(appContext.getPackageName() + ".WIDGET_CLICK");
+        intent.setComponent(new ComponentName(appContext, RNWidgetUtil.getWidgetProviderClassName(appContext, widgetName)));
+        intent.putExtra("widgetId", id);
+        intent.putExtra("clickAction", clickableView.getClickAction());
+        intent.putExtra("clickActionData", Arguments.toBundle(clickableView.getClickActionData()));
+
+        int deterministicRequestCode = id * 31;
+        if (clickableView.getClickAction() != null) {
+            deterministicRequestCode += clickableView.getClickAction().hashCode();
+        }
+        // PREV_MONTH and NEXT_MONTH maintain a fixed requestCode so FLAG_UPDATE_CURRENT completely replaces
+        // stale pending intents, preventing queued ghost clicks from firing long after user interactions.
+        if (clickableView.getClickActionData() != null &&
+            !"PREV_MONTH".equals(clickableView.getClickAction()) &&
+            !"NEXT_MONTH".equals(clickableView.getClickAction())) {
+            deterministicRequestCode += clickableView.getClickActionData().toString().hashCode();
+        }
+
+        android.util.Log.d("WIDGET_CLICK_NATIVE", "[registerClickTask] widgetId=" + id +
+            ", action=" + clickableView.getClickAction() +
+            ", reqCode=" + deterministicRequestCode);
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+            appContext,
+            deterministicRequestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
+        );
+        widgetView.setOnClickPendingIntent(button, pendingIntent);
+    }`;
+
+const oldRegisterClickTaskV3 = `    private void registerClickTask(int id, ClickableView clickableView, RemoteViews widgetView, Integer button) {
+        Intent intent = new Intent(appContext.getPackageName() + ".WIDGET_CLICK");
+        intent.setComponent(new ComponentName(appContext, RNWidgetUtil.getWidgetProviderClassName(appContext, widgetName)));
+        if (clickableView.getClickAction() != null) {
+            intent.setData(Uri.parse("widget://" + id + "/" + clickableView.getClickAction()));
+        }
+        intent.putExtra("widgetId", id);
+        intent.putExtra("clickAction", clickableView.getClickAction());
+        intent.putExtra("clickActionData", Arguments.toBundle(clickableView.getClickActionData()));
+
+        int deterministicRequestCode = id * 31;
+        if (clickableView.getClickAction() != null) {
+            deterministicRequestCode += clickableView.getClickAction().hashCode();
+        }
+        if (clickableView.getClickActionData() != null &&
+            !"PREV_MONTH".equals(clickableView.getClickAction()) &&
+            !"NEXT_MONTH".equals(clickableView.getClickAction())) {
+            deterministicRequestCode += clickableView.getClickActionData().toString().hashCode();
+        }
+
+        android.util.Log.d("WIDGET_CLICK_NATIVE", "[registerClickTask] widgetId=" + id +
+            ", action=" + clickableView.getClickAction() +
+            ", reqCode=" + deterministicRequestCode);
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+            appContext,
+            deterministicRequestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
+        );
+        widgetView.setOnClickPendingIntent(button, pendingIntent);
+    }`;
+
+const newRegisterClickTask = `    private void registerClickTask(int id, ClickableView clickableView, RemoteViews widgetView, Integer button) {
+        Intent intent = new Intent(appContext.getPackageName() + ".WIDGET_CLICK");
+        intent.setComponent(new ComponentName(appContext, RNWidgetUtil.getWidgetProviderClassName(appContext, widgetName)));
+        if (clickableView.getClickAction() != null) {
+            intent.setData(Uri.parse("widget://" + id + "/" + clickableView.getClickAction()));
+        }
+        intent.putExtra("widgetId", id);
+        intent.putExtra("clickAction", clickableView.getClickAction());
+        intent.putExtra("clickActionData", Arguments.toBundle(clickableView.getClickActionData()));
+
+        int deterministicRequestCode = id * 31;
+        if (clickableView.getClickAction() != null) {
+            deterministicRequestCode += clickableView.getClickAction().hashCode();
+        }
+        if (clickableView.getClickActionData() != null &&
+            !"PREV_MONTH".equals(clickableView.getClickAction()) &&
+            !"NEXT_MONTH".equals(clickableView.getClickAction())) {
+            deterministicRequestCode += clickableView.getClickActionData().toString().hashCode();
+        }
+
+        android.util.Log.d("WIDGET_CLICK_NATIVE", "[UI_RENDER_ATTACH_LISTENER] widgetId=" + id +
+            ", action=" + clickableView.getClickAction() +
+            ", reqCode=" + deterministicRequestCode);
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+            appContext,
+            deterministicRequestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
+        );
+        widgetView.setOnClickPendingIntent(button, pendingIntent);
+    }`;
+
 const p1Success = patchFile(
     rnWidgetPath,
-    oldRegisterClickTask,
+    [oldRegisterClickTaskOriginal, oldRegisterClickTaskV1, oldRegisterClickTaskV2, oldRegisterClickTaskV3],
     newRegisterClickTask,
-    "PendingIntent RequestCode with deterministic & NULL-safe version"
+    "PendingIntent RequestCode with fixed nav key & NULL-safe version"
 );
 
 // 1a. Define tStart at the beginning of drawWidget in RNWidget.java
@@ -142,7 +240,7 @@ const oldDrawWidgetClickableSectionWithLogs = `        long tBeforeClickables = 
         android.util.Log.d("WIDGET_NATIVE", "[PROFILE] updateAppWidget (IPC Call): " + (tEnd - tAfterClickables) + "ms");
         android.util.Log.d("WIDGET_NATIVE", "[NATIVE] drawWidgetById END. Native Render Time: " + (tEnd - tStart) + "ms");`;
 
-const newDrawWidgetClickableSection = `        long tBeforeClickables = System.currentTimeMillis();
+const oldDrawWidgetClickableSectionV1 = `        long tBeforeClickables = System.currentTimeMillis();
 
         // --- DUAL-PHASE RENDER (PHASE 1: VISUALS ONLY) ---
         // Push the image update to the launcher immediately so the user sees the new widget UI instantly
@@ -169,9 +267,41 @@ const newDrawWidgetClickableSection = `        long tBeforeClickables = System.c
         android.util.Log.d("WIDGET_NATIVE", "[PROFILE] Interactive Update (IPC Call): " + (tEnd - tAfterClickables) + "ms");
         android.util.Log.d("WIDGET_NATIVE", "[NATIVE] drawWidgetById END. Native Render Time: " + (tEnd - tStart) + "ms");`;
 
+const newDrawWidgetClickableSection = `        long tBeforeClickables = System.currentTimeMillis();
+
+        // --- DUAL-PHASE RENDER (PHASE 1: VISUALS ONLY) ---
+        // Push the image update to the launcher immediately so the user sees the new widget UI instantly
+        AppWidgetManager.getInstance(appContext)
+            .updateAppWidget(widgetId, remoteWidgetView);
+        
+        long tFirstUpdate = System.currentTimeMillis();
+        android.util.Log.d("WIDGET_NATIVE", "[PROFILE] Fast Visual Update (IPC Call): " + (tFirstUpdate - tBeforeClickables) + "ms");
+
+        // --- DUAL-PHASE RENDER (PHASE 2: INTERACTIVE DEEP LINKS) ---
+        // Lazily compute and add the transparent clickable overlays to make the cells interactive
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            addClickableAreas(widgetId, remoteWidgetView, widgetWithViews);
+        }
+        addCollectionViews(widgetId, remoteWidgetView, widgetWithViews);
+
+        long tAfterClickables = System.currentTimeMillis();
+        android.util.Log.d("WIDGET_NATIVE", "[PROFILE] addClickableAreas (RemoteViews setup): " + (tAfterClickables - tFirstUpdate) + "ms");
+
+        AppWidgetManager.getInstance(appContext)
+            .updateAppWidget(widgetId, remoteWidgetView);
+
+        long tEnd = System.currentTimeMillis();
+        android.util.Log.d("WIDGET_NATIVE", "[PROFILE] Interactive Update (IPC Call): " + (tEnd - tAfterClickables) + "ms");
+        android.util.Log.d("WIDGET_NATIVE", "[NATIVE] drawWidgetById END. Native Render Time: " + (tEnd - tStart) + "ms");
+
+        try {
+            Class<?> memoClass = Class.forName("com.dstle.calendar.widget.Memo");
+            memoClass.getMethod("unlockNavigation").invoke(null);
+        } catch (Exception ignored) {}`;
+
 const p1bSuccess = patchFile(
     rnWidgetPath,
-    [oldDrawWidgetClickableSectionOriginal, oldDrawWidgetClickableSectionWithLogs],
+    [oldDrawWidgetClickableSectionOriginal, oldDrawWidgetClickableSectionWithLogs, oldDrawWidgetClickableSectionV1],
     newDrawWidgetClickableSection,
     "Dual-Phase Rendering (Visuals First, Clickables Second) in RNWidget.java"
 );
@@ -384,7 +514,70 @@ const p1gSuccess = patchFile(
     "Fix Foldable widget list height/width by using rootView.getMeasuredWidth() & Height()"
 );
 
-if (p1Success && p1aSuccess && p1bSuccess && p1cSuccess && p1dSuccess && p1eSuccess && p1fSuccess && p1gSuccess && p2Success) {
+// 3. Patch RNWidgetJsCommunication.java (WorkManager Unique Work with REPLACE policy to prevent queue accumulation)
+const jsCommPath = 'node_modules/react-native-android-widget/android/src/main/java/com/reactnativeandroidwidget/RNWidgetJsCommunication.java';
+const oldStartBackgroundTask = `    protected static void startBackgroundTask(Context context, Data data) {
+        workManagerWorkaround(context);
+
+        OneTimeWorkRequest headlessJsTaskWorkRequest =
+            new OneTimeWorkRequest.Builder(RNWidgetBackgroundTaskWorker.class)
+                .setInputData(data)
+                .build();
+
+        WorkManager
+            .getInstance(context)
+            .enqueue(headlessJsTaskWorkRequest);
+    }`;
+
+const newStartBackgroundTask = `    protected static void startBackgroundTask(Context context, Data data) {
+        workManagerWorkaround(context);
+
+        OneTimeWorkRequest headlessJsTaskWorkRequest =
+            new OneTimeWorkRequest.Builder(RNWidgetBackgroundTaskWorker.class)
+                .setInputData(data)
+                .build();
+
+        WorkManager
+            .getInstance(context)
+            .enqueueUniqueWork(
+                context.getPackageName() + ".RN_WIDGET_TASK",
+                ExistingWorkPolicy.REPLACE,
+                headlessJsTaskWorkRequest
+            );
+    }`;
+
+const p3Success = patchFile(
+    jsCommPath,
+    oldStartBackgroundTask,
+    newStartBackgroundTask,
+    "WorkManager enqueueUniqueWork with ExistingWorkPolicy.REPLACE to prevent queue accumulation"
+);
+
+// 4. Patch HeadlessJsTaskWorker.java (Complete with failure on stopped so WorkManager never retries stale tasks)
+const workerPath = 'node_modules/react-native-android-widget/android/src/main/java/com/reactnativeandroidwidget/oss/HeadlessJsTaskWorker.java';
+const oldWorkerOnStopped = `    @Override
+    public void onStopped() {
+        super.onStopped();
+        cleanUpTask();
+    }`;
+
+const newWorkerOnStopped = `    @Override
+    public void onStopped() {
+        super.onStopped();
+        if (this.mCompleter != null) {
+            this.mCompleter.set(Result.failure());
+        }
+        cleanUpTask();
+    }`;
+
+const p4Success = patchFile(
+    workerPath,
+    oldWorkerOnStopped,
+    newWorkerOnStopped,
+    "HeadlessJsTaskWorker onStopped Result.failure to permanently stop stale replay"
+);
+
+if (p1Success && p1aSuccess && p1bSuccess && p1cSuccess && p1dSuccess && p1eSuccess && p1fSuccess && p1gSuccess && p2Success && p3Success && p4Success) {
     console.log("\n>>> ALL RN-ANDROID-WIDGET PATCHES APPLIED SUCCESSFULLY! <<<");
 } else {
     console.error("\n>>> SOME RN-ANDROID-WIDGET PATCHES FAILED! PLEASE CHECK ERRORS ABOVE. <<<");

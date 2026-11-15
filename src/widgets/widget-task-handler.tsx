@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
+import { NativeModules } from 'react-native';
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 import {
   FIXED_ANNIVERSARIES,
@@ -59,7 +60,7 @@ async function getWidgetSettings(allValues: Record<string, string | null>): Prom
 
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
   const taskStartedAt = Date.now();
-  // console.log(`[WIDGET_TRACE] Task started: ${props.widgetAction} at ${taskStartedAt}`);
+  //console.log(`[WIDGET_TASK_START] widgetAction=${props.widgetAction}, clickAction=${props.clickAction}, widgetId=${props.widgetInfo?.widgetId}, data=${JSON.stringify(props.clickActionData)}`);
 
   try {
     const keys = [
@@ -116,46 +117,51 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
 
       case 'WIDGET_CLICK': {
         const action = props.clickAction;
-        // console.log(`[WIDGET_TRACE] WIDGET_CLICK: ${action}`);
+        const clickTime = Date.now();
+        //console.log(`[WIDGET_CLICK] Action received: ${action} at ${clickTime}`);
 
         if (action === 'RESET_TO_CURRENT_MONTH') {
           const reason = props.clickActionData?.reason;
-          // console.log(`[WIDGET_TRACE] RESET_TO_CURRENT_MONTH: Full reset (reason: ${reason})`);
+          //console.log(`[WIDGET_CLICK] RESET_TO_CURRENT_MONTH triggered (reason: ${reason})`);
           const renderTime = Date.now();
           await resetNavigationState(renderTime);
           await render(props, new Date(), memos, settings, renderTime);
         } else if (action === 'PREV_MONTH' || action === 'NEXT_MONTH') {
-          const clickTime = Date.now();
-          const renderTime = Number(props.clickActionData?.renderTime);
-          
+          const nativeDispatchTime = Number(props.clickActionData?.nativeDispatchTime);
+          const dispatchDelay = Number.isFinite(nativeDispatchTime) && nativeDispatchTime > 0
+            ? clickTime - nativeDispatchTime
+            : -1;
+
+          // 10초(10,000ms) 이상 지연된 클릭은 시스템에 의해 뒤늦게 재실행된 고스트 클릭이므로 무시
+          if (dispatchDelay > 10000) {
+            // console.warn(`[WIDGET_GHOST_CLICK_BLOCKED] Discarding delayed ghost click! Touch was at ${nativeDispatchTime}, executed at ${clickTime}, delayed by ${dispatchDelay}ms (> 10000ms). Action: ${action}`);
+            break;
+          }
+
+          // if (dispatchDelay >= 0) {
+          //   console.log(`[WIDGET_CLICK_REALTIME] User touch received, dispatchDelay: ${dispatchDelay}ms, Action: ${action}`);
+          // }
+
           const savedNavTimestamp = allValues[WIDGET_NAV_TIMESTAMP_KEY];
           const lastNavAt = savedNavTimestamp ? parseInt(savedNavTimestamp, 10) : 0;
-          
-          if (Number.isFinite(renderTime) && renderTime > 0 && lastNavAt > renderTime) {
-            // console.log(`[WIDGET_TRACE] Blocking stale click: renderTime(${renderTime}) < lastNavAt(${lastNavAt})`);
-            break;
-          }
-
-          const navActionKey = `${action}:${renderTime}`;
-          const savedNavAction = allValues[WIDGET_NAV_ACTION_KEY];
-          if (navActionKey === savedNavAction) {
-            // console.log(`[WIDGET_TRACE] Blocking duplicate action: ${navActionKey}`);
-            break;
-          }
 
           const timeSinceLastNav = clickTime - lastNavAt;
-          if (timeSinceLastNav < WIDGET_NAV_DEBOUNCE_MS) {
-            // console.log(`[WIDGET_TRACE] Debouncing: ${timeSinceLastNav}ms < ${WIDGET_NAV_DEBOUNCE_MS}ms`);
+          if (timeSinceLastNav >= 0 && timeSinceLastNav < WIDGET_NAV_DEBOUNCE_MS) {
+            console.warn(`[WIDGET_GHOST_CLICK_BLOCKED] Debounced rapid click! ${timeSinceLastNav}ms < ${WIDGET_NAV_DEBOUNCE_MS}ms, action=${action}`);
             break;
           }
 
+          const savedWidgetDate = allValues[WIDGET_DATE_KEY];
           const baseYear = Number(props.clickActionData?.baseYear);
           const baseMonth = Number(props.clickActionData?.baseMonth);
-          const savedWidgetDate = allValues[WIDGET_DATE_KEY];
 
-          let viewDate = (Number.isInteger(baseYear) && Number.isInteger(baseMonth))
+          // savedWidgetDate가 있으면(이미 이전/다음 달로 이동한 상태) 해당 날짜 기준으로 연속 이동
+          // 없으면(현재 달 상태) 위젯에 표시된 연월(baseYear/baseMonth) 또는 현재 날짜 기준
+          let viewDate = savedWidgetDate
+            ? new Date(savedWidgetDate)
+            : (Number.isInteger(baseYear) && Number.isInteger(baseMonth))
             ? new Date(baseYear, baseMonth, 1)
-            : savedWidgetDate ? new Date(savedWidgetDate) : new Date();
+            : new Date();
 
           if (isNaN(viewDate.getTime())) viewDate = new Date();
 
@@ -168,28 +174,30 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
           const now = new Date();
           const isCurrentMonth = viewDate.getFullYear() === now.getFullYear() && viewDate.getMonth() === now.getMonth();
 
+          // console.log(`[WIDGET_CLICK_ACCEPTED] Action: ${action}, Moving to ${viewDate.getFullYear()}-${viewDate.getMonth() + 1}, isCurrentMonth=${isCurrentMonth}, latency=${timeSinceLastNav}ms`);
+
+          const nextRenderTime = Date.now();
           if (isCurrentMonth) {
-            // console.log('[WIDGET_TRACE] Navigated to current month: Clearing state');
-            const renderTime = Date.now();
-            await resetNavigationState(renderTime);
-            await render(props, viewDate, memos, settings, renderTime);
+            await resetNavigationState(nextRenderTime);
+            await render(props, viewDate, memos, settings, nextRenderTime);
           } else {
-            // console.log(`[WIDGET_TRACE] Navigating to ${viewDate.toISOString()}`);
             await AsyncStorage.multiSet([
               [WIDGET_DATE_KEY, viewDate.toISOString()],
-              [WIDGET_NAV_TIMESTAMP_KEY, clickTime.toString()],
-              [WIDGET_NAV_ACTION_KEY, navActionKey]
+              [WIDGET_NAV_TIMESTAMP_KEY, nextRenderTime.toString()],
+              [WIDGET_NAV_ACTION_KEY, `${action}:${nextRenderTime}`]
             ]);
-            await render(props, viewDate, memos, settings);
+            await render(props, viewDate, memos, settings, nextRenderTime);
           }
         }
         break;
       }
     }
   } catch (e) {
-    // console.error('[WIDGET_TRACE] Task Error:', e);
+    console.error('[WIDGET_TASK_ERROR]', e);
   } finally {
-    // console.log(`[WIDGET_TRACE] Task End: Total Time ${Date.now() - startTime}ms`);
+    try {
+      NativeModules.WidgetNativeModule?.unlockNavigation?.();
+    } catch (_) {}
   }
 }
 

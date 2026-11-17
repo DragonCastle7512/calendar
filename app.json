@@ -26,6 +26,9 @@
         "backgroundColor": "#00000000"
       },
       "package": "com.dstle.calendar",
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED"
+      ],
       "launchMode": "singleTask"
     },
     "web": {
@@ -33,6 +36,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "./plugins/withAndroidWidgetBoot",
       "expo-router",
       [
         "react-native-android-widget",
